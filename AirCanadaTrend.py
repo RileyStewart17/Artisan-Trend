@@ -115,12 +115,16 @@ def pulldata(file):
         if x[0] in ban1:
             c = i
             break  # Break parsing through the CT samples if 'Target' is found.
-        c = i   
-    CTvariables = np.array(file.row_values(v))
-    CTdata = list(d.values())
-    for i in range(4):
-        x = file.row_values(c+v+1+i)
-        if 'Sample' in x:
+        c = i
+    CTvariables = np.array(file.row_values(v)) # defines CTvariables as row containing 'Sample' 
+    CTdata = list(d.values())                  # defines CTdata as the values contained in d
+
+# Sometimes, samples values continue just below initial table or other samples
+# are contained just below, so this loop pulls that particular data if this occurs
+
+    for i in range(4):                       
+        x = file.row_values(c+v+1+i)         
+        if 'Sample' in x:                   
             t = i+c+v+1
             d2 = {}
             variables2 = np.array(file.row_values(t))
