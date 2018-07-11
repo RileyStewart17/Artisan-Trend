@@ -44,12 +44,20 @@ except:
 
 labels = []  # full labels of samples
 labels_sub = [] # First three letters of each sample name (for sorting)
+
+cl_labels = []
+cl_labels_sub = []
+
 try:
-    with open("settings.txt", "r") as text_file:
-        temp = data[1:]
-        for i in range(len(temp)):
-            labels.append(temp[i][:-1])
-            labels_sub.append(labels[i][:3].lower())
+    ind_labels = np.where(np.array(data) == '\n')[0]
+    CTlabels = data[(ind_labels[0]+1):][:(ind_labels[1]-2)]
+    CLlabels = data[(ind_labels[1]+1):]
+    for i in range(len(CTlabels)):
+        labels.append(CTlabels[i][:-1])
+        labels_sub.append(labels[i][:3].lower())
+    for i in range(len(CLlabels)):
+        cl_labels.append(CLlabels[i][:-1])
+        cl_labels_sub.append(cl_labels[i][:3].lower())
 except:
     pass
 
@@ -98,6 +106,9 @@ def pulldata(file):
     
     labels_loc = []    # List to contain sample names in file
     labels_loc_3 = []  # List to contain first three letters of sample names (for sorting)
+    cl_labels_loc = []
+    cl_labels_loc_3 = []
+    
     done = False       # Boolean value used later
 
     for i in range(100):
@@ -150,9 +161,14 @@ def pulldata(file):
                     for o in range(len(CTvariables)):
                         if variables2[o] != CTvariables[o]:
                             ind_sort = np.where(np.array(CTvariables) == variables2[o])[0]
-                            if len(ind_sort) == 0:  ##ADD to data if not present
-                                variables2[o] = ''
-                                data2[i2][o] == ''
+                            if len(ind_sort) == 0:
+                                if variables2[o] != '':
+                                    CTvariables = np.append(CTvariables, variables2[o])
+                                    variables2 = np.append(variables2, '')
+                                    for p in range(len(CTdata)):
+                                        CTdata[p] = np.append(CTdata[p], '')
+                                    for p in range(len(data2)):
+                                        data2[p] = np.append(data2[p], '')
                             else:
                                 variables2[o], variables2[ind_sort[0]] = variables2[ind_sort[0]], variables2[o]
                                 for v in range(len(data2)):
@@ -178,6 +194,9 @@ def pulldata(file):
                 x = file.row_values(w+i4+1)
                 if x[0] not in ['', 'target', 'Target']:
                     d3["data{0}".format(i4)]=np.array(x)
+                    strin = d3["data{0}".format(i4)][0].split(' ',1)[0]   # grab data, and append sample name
+                    cl_labels_loc.append(d3["data{0}".format(i4)][0])        # to labels_loc, and first three letters
+                    cl_labels_loc_3.append(strin[:3].lower())
                 if x[0] in ban1:
                     break 
             CLdata = list(d3.values())
@@ -194,6 +213,9 @@ def pulldata(file):
             x = file.row_values(v+i6+1)
             if x[0] not in ['', 'target', 'Target']:
                 d3["data{0}".format(i6)]=np.array(x)
+                strin = d3["data{0}".format(i6)][0].split(' ',1)[0]   # grab data, and append sample name
+                cl_labels_loc.append(d3["data{0}".format(i6)][0])        # to labels_loc, and first three letters
+                cl_labels_loc_3.append(strin[:3].lower())
             if x[0] in ban1:
                 break 
         CLdata = list(d3.values())
@@ -226,6 +248,36 @@ def pulldata(file):
     sorted_together =  sorted(together, key=lambda x: x[0].lower())     
     labels_loc = [x[0] for x in sorted_together]
     CTdata = [x[1] for x in sorted_together]
+    
+    if len(cl_labels_sub) != 0:
+        if set(cl_labels) != set(cl_labels_loc):
+            if set(cl_labels_sub) != set(cl_labels_loc_3):
+                missing_samples = np.setdiff1d(cl_labels_sub,cl_labels_loc_3)
+                for v in range(len(missing_samples)):
+                    ind_lab = np.where(np.array(cl_labels_sub) == missing_samples[v])[0][0]
+                    cl_labels_loc_3.append(missing_samples[v])
+                    fill = ['' for x in range(len(AClist))]
+                    fill[0] = cl_labels[ind_lab]
+                    cl_labels_loc.append(cl_labels[ind_lab])
+                    CLdata.append(fill)
+                if set(cl_labels) != set(cl_labels_loc):
+                    wrong_names = np.setdiff1d(cl_labels_loc, cl_labels)
+                    diff_names = np.setdiff1d(cl_labels, cl_labels_loc)
+                    for v in range(len(wrong_names)):
+                        ind_lab = np.where(np.array(cl_labels_loc) == wrong_names[v])[0][0]
+                        CLdata = [[x.replace(wrong_names[v], diff_names[v]) for x in i] for i in CLdata]
+                        cl_labels_loc = [i.replace(wrong_names[v], diff_names[v])for i in cl_labels_loc] 
+            else:
+                wrong_names = np.setdiff1d(cl_labels_loc, cl_labels)
+                diff_names = np.setdiff1d(cl_labels, cl_labels_loc)
+                for v in range(len(wrong_names)):
+                    ind_lab = np.where(np.array(cl_labels_loc) == wrong_names[v])[0][0]
+                    CLdata = [[x.replace(wrong_names[v], diff_names[v]) for x in i] for i in CLdata]
+                    cl_labels_loc = [i.replace(wrong_names[v], diff_names[v])for i in cl_labels_loc]                   
+    together = zip(cl_labels_loc, CLdata)
+    sorted_together =  sorted(together, key=lambda x: x[0].lower())     
+    cl_labels_loc = [x[0] for x in sorted_together]
+    CLdata = [x[1] for x in sorted_together]
 
 
     return CTvariables, CTdata, CLvariables, CLdata
@@ -318,6 +370,8 @@ def plotter(system, test):
                             u1 = np.nan
                         elif u1[0] in ban2:
                             u1 = u1[1:]
+                            if u1[-1] in ban2:
+                                u1 = u1[:-1]
                         data.append(float(u1))
                     except:
                         data.append(np.nan)
@@ -334,6 +388,8 @@ def plotter(system, test):
                             u1 = np.nan
                         elif u1[0] in ban2:
                             u1 = u1[1:]
+                            if u1[-1] in ban2:
+                                u1 = u1[:-1]
                         data.append(float(u1))
                     except:
                         data.append(np.nan)
@@ -350,6 +406,8 @@ def plotter(system, test):
                             u1 = np.nan
                         elif u1[0] in ban2:
                             u1 = u1[1:]
+                            if u1[-1] in ban2:
+                                u1 = u1[:-1]
                         data.append(float(u1))
                     except:
                         data.append(np.nan)
@@ -367,6 +425,8 @@ def plotter(system, test):
                             u1 = np.nan
                         elif u1[0] in ban2:
                             u1 = u1[1:]
+                            if u1[-1] in ban2:
+                                u1 = u1[:-1]
                         data.append(float(u1))
                     except:
                         data.append(np.nan)
@@ -380,6 +440,8 @@ def plotter(system, test):
                             u2 = np.nan
                         elif u2[0] in ban2:
                             u2 = u1[1:]
+                            if u2[-1] in ban2:
+                                u2 = u2[:-1]
                         data2.append(float(u2))
                     except:
                         data2.append(np.nan)
@@ -396,6 +458,8 @@ def plotter(system, test):
                             u1 = np.nan
                         elif u1[0] in ban2:
                             u1 = u1[1:]
+                            if u1[-1] in ban2:
+                                u1 = u1[:-1]
                         data.append(float(u1))
                     except:
                         data.append(np.nan)
@@ -413,6 +477,8 @@ def plotter(system, test):
                             u1 = np.nan
                         elif u1[0] in ban2:
                             u1 = u1[1:]
+                            if u1[-1] in ban2:
+                                u1 = u1[:-1]
                         data.append(float(u1))
                     except:
                         data.append(np.nan)
@@ -426,6 +492,8 @@ def plotter(system, test):
                             u2 = np.nan
                         elif u2[0] in ban2:
                             u2 = u1[1:]
+                            if u2[-1] in ban2:
+                                u2 = u2[:-1]
                         data2.append(float(u2))
                     except:
                         data2.append(np.nan)
@@ -461,6 +529,8 @@ def plotter(system, test):
                             u1 = np.nan
                         elif u1[0] in ban2:
                             u1 = u1[1:]
+                            if u1[-1] in ban2:
+                                u1 = u1[:-1]
                         data.append(float(u1))
                     except:
                         data.append(np.nan)
@@ -477,6 +547,8 @@ def plotter(system, test):
                             u1 = np.nan
                         elif u1[0] in ban2:
                             u1 = u1[1:]
+                            if u1[-1] in ban2:
+                                u1 = u1[:-1]
                         data.append(float(u1))
                     except:
                         data.append(np.nan)
@@ -493,6 +565,8 @@ def plotter(system, test):
                             u1 = np.nan
                         elif u1[0] in ban2:
                             u1 = u1[1:]
+                            if u1[-1] in ban2:
+                                u1 = u1[:-1]
                         data.append(float(u1))
                     except:
                         data.append(np.nan)
@@ -776,4 +850,4 @@ layout = {
 }
 fig = go.Figure(data=data, layout=layout)
 
-py2.offline.plot(fig, auto_open=False, filename='Trend.html', image_filename='Trend')
+py2.offline.plot(fig, auto_open=True, filename='Trend.html', image_filename='Trend')
