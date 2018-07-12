@@ -10,8 +10,8 @@ from os.path import isfile, join
 # permission from the author and Artisan Engineering.
 
 import xlrd
-from tkinter import filedialog
-from tkinter import *
+import tkinter as tk
+from tkinter import ttk
 from datetime import datetime
 from tkinter.filedialog import askdirectory
 from tkinter import messagebox
@@ -36,7 +36,7 @@ try:
         text_file.close()
     dirname = data_txt[0][:-1]
 except:
-    root = Tk()
+    root = tk.Tk()
     root.withdraw()
     messagebox.showinfo('Air Canada Trends', 'Please select the folder that contains the excel report files.')
     dirname = askdirectory(parent=root,initialdir="/",title='Please select a directory')+'/'
@@ -335,7 +335,27 @@ date_temp = zip(dates, AClist)
 date_temp_sorted =  sorted(date_temp, key=lambda x: datetime.strptime(x[0], '%Y-%m-%d'))
 dates = [x[0] for x in date_temp_sorted]
 AClist = [x[1] for x in date_temp_sorted]
+
+def change_directory():
+    root = tk.Tk()
+    root.withdraw()
+    messagebox.showinfo('Air Canada Trends', 'Please select the folder that contains the excel report files.')
+    dirname = askdirectory(parent=root,initialdir="/",title='Please select a directory')+'/'
+    root.destroy()
+    with open('settings.txt', 'w') as output_file:
+        data_txt[0] = dirname+'\n'
+        for line in data_txt:
+            output_file.write(line)
+        
+#def dummy():
+#    on_exit()
+#    
+#def on_exit():
+#    dummy()
     
+def on_exit(window):
+    window.destroy()
+    window.quit()
 
 def plotter(system, test):
     datadict = {}
@@ -921,120 +941,233 @@ def plotter(system, test):
     
 
 
-class App(Tk):
+#class App(Tk):
+#    def __init__(self):
+#        Tk.__init__(self)
+#        menuBar = MenuBar(self)
+#        buttonBar = ButtonBar(self)
+#
+#        self.config(menu=menuBar)
+#        cmd_frame = LabelFrame(buttonBar, text="Commands", relief=RIDGE, padx=12)
+#        cmd_frame.grid(row=0, column=1, sticky='EWNS')
+#        buttonBar.grid()
+#
+#
+#class MenuBar(Menu):
+#    def __init__(self, parent):
+#        Menu.__init__(self, parent)
+#
+#        fileMenu = Menu(self, tearoff=False)
+#        self.add_cascade(label="File", menu=fileMenu)
+#        fileMenu.add_command(label="Exit", command=dummy)
+#        fileMenu.add_command(label = 'Change file directory', command=change_directory)
+#
+#class ButtonBar(Frame):
+#    def __init__(self, parent):
+#        Frame.__init__(self, parent)
+#        button1 = Button(self,
+#                         text="TDS",
+#                         command=lambda: plotter('CT', 'TDS'))  
+#        #    button1.pack(side=LEFT)
+#        button2 = Button(self,
+#                                 text="ORP",
+#                                 command= lambda: plotter('CT','ORP'))
+#        #    button2.pack(side=LEFT)
+#        button3 = Button(self,
+#                                 text="pH",
+#                                 command=lambda: plotter('CT','pH'))  
+#        #    button3.pack(side=LEFT)
+#        button10 = Button(self,
+#                                 text="M. Alk",
+#                                 command=lambda: plotter('CT','malk'))  
+#        #    button10.pack(side=LEFT)
+#        button4 = Button(self,
+#                                 text="PO4 & PhO4",
+#                                 command=lambda: plotter('CT','po4')) 
+#        #    button4.pack(side=LEFT)
+#        button5 = Button(self,
+#                                 text="Chlorine",
+#                                 command=lambda: plotter('CT','cl'))  
+#        #    button5.pack(side=LEFT)
+#        button6 = Button(self,
+#                                 text="Fe/Iron",
+#                                 command=lambda: plotter('CT','fe'))  
+#        #    button6.pack(side=LEFT)
+#        button7 = Button(self,
+#                                 text="Cu/Copper",
+#                                 command=lambda: plotter('CT','Cu'))  
+#        #    button7.pack(side=LEFT)
+#        button8 = Button(self,
+#                                 text="Hardness",
+#                                 command=lambda: plotter('CT','Hardness'))  
+#        #    button8.pack(side=LEFT)
+#        button9 = Button(self,
+#                                 text="Zn/Zinc",
+#                                 command=lambda: plotter('CT','Zn'))  
+#        button11 = Button(self,
+#                                 text="Closed Loop TDS",
+#                                 command=lambda: plotter('CL','cltds'))  
+#        button12 = Button(self,
+#                                 text="Closed Loop pH",
+#                                 command=lambda: plotter('CL','clph')) 
+#        button13 = Button(self,
+#                                 text="Closed Loop Nitrite",
+#                                 command=lambda: plotter('CL','nitrite'))  
+#        button14 = Button(self,
+#                                 text="FATP & TATP",
+#                                 command=lambda: plotter('CT','atp'))  
+#        button15 = Button(self,
+#                         text="Conductivity",
+#                         command=lambda: plotter('CT','cond')) 
+#        #    button9.pack(side=LEFT)
+#        button1.grid(row=0, column=0, rowspan=1, sticky='EWNS')
+#        button2.grid(row=0, column=1, columnspan=1, sticky='EWNS')
+#        button3.grid(row=0, column=2, columnspan=1, sticky='EWNS')
+#        button4.grid(row=0, column=3, columnspan=1, sticky='EWNS')
+#        button5.grid(row=0, column=4, columnspan=1, sticky='EWNS')
+#        button6.grid(row=0, column=5, columnspan=1, sticky='EWNS')
+#        button7.grid(row=0, column=6, columnspan=1, sticky='EWNS')
+#        button8.grid(row=0, column=7, columnspan=1, sticky='EWNS')
+#        button9.grid(row=1, column=0, columnspan=1, sticky='EWNS')
+#        button14.grid(row=1, column=1, columnspan=1, sticky='EWNS')
+#        button15.grid(row=1, column=2, columnspan=1, sticky='EWNS')
+#        button10.grid(row=1, column=3, columnspan=1, sticky='EWNS')
+#        button11.grid(row=1, column=4, columnspan=1, sticky='EWNS')
+#        button12.grid(row=1, column=5, columnspan=1, sticky='EWNS')
+#        button13.grid(row=1, column=6, columnspan=1, sticky='EWNS')
+#
+#if __name__ == "__main__":
+#
+#    app = App()
+#    app.rowconfigure((0,1), weight=1)  # make buttons stretch when
+#    app.columnconfigure((0,7), weight=1)  # when window is resized
+#    app.wm_title("Air Canada Trends")
+#    app.iconbitmap('aircanadaicon.ico')    
+#    def on_closing():
+#        app.destroy()
+#        app.quit() 
+#        
+#    app.protocol("WM_DELETE_WINDOW", on_closing)
+#    app.mainloop()
+
+class app():
     def __init__(self):
-        Tk.__init__(self)
-        menuBar = MenuBar(self)
-        buttonBar = ButtonBar(self)
+        self.window = tk.Tk()
+        self.window.title("Air Canada Trends")
+        self.window.iconbitmap('aircanadaicon.ico')        
+        self.create_widgets()
 
-        self.config(menu=menuBar)
-        buttonBar.pack()
+        self.radio_variable = tk.StringVar()
+        self.combobox_value = tk.StringVar()
+#        def on_exit():
+#            self.window.quit()
+#            self.window.destroy()
+        self.window.protocol("WM_DELETE_WINDOW", lambda: on_exit(self.window))
 
+    def create_widgets(self):
+        # Create some room around all the internal frames
+        self.window['padx'] = 5
+        self.window['pady'] = 5
 
-class MenuBar(Menu):
-    def __init__(self, parent):
-        Menu.__init__(self, parent)
-
-        fileMenu = Menu(self, tearoff=False)
-        self.add_cascade(label="File", menu=fileMenu)
-        fileMenu.add_command(label="Exit", command=on_closing)
-        fileMenu.add_command(label = 'Change file directory', command=change_directory)
-
-class ButtonBar(Frame):
-    def __init__(self, parent):
-        Frame.__init__(self, parent)
-        button1 = Button(self,
+        # - - - - - - - - - - - - - - - - - - - - -
+        # The Commands frame
+        # cmd_frame = ttk.LabelFrame(self.window, text="Commands", padx=5, pady=5, relief=tk.RIDGE)
+        cmd_frame = ttk.LabelFrame(self.window, text="CT Tests", relief=tk.RIDGE)
+        cmd_frame.grid(row=1, column=1, sticky=tk.E + tk.W + tk.N + tk.S)
+        button1 = ttk.Button(cmd_frame,
                          text="TDS",
                          command=lambda: plotter('CT', 'TDS'))  
         #    button1.pack(side=LEFT)
-        button2 = Button(self,
+        button2 = ttk.Button(cmd_frame,
                                  text="ORP",
                                  command= lambda: plotter('CT','ORP'))
         #    button2.pack(side=LEFT)
-        button3 = Button(self,
+        button3 = ttk.Button(cmd_frame,
                                  text="pH",
                                  command=lambda: plotter('CT','pH'))  
         #    button3.pack(side=LEFT)
-        button10 = Button(self,
+        button10 = ttk.Button(cmd_frame,
                                  text="M. Alk",
                                  command=lambda: plotter('CT','malk'))  
         #    button10.pack(side=LEFT)
-        button4 = Button(self,
+        button4 = ttk.Button(cmd_frame,
                                  text="PO4 & PhO4",
                                  command=lambda: plotter('CT','po4')) 
         #    button4.pack(side=LEFT)
-        button5 = Button(self,
+        button5 = ttk.Button(cmd_frame,
                                  text="Chlorine",
                                  command=lambda: plotter('CT','cl'))  
         #    button5.pack(side=LEFT)
-        button6 = Button(self,
+        button6 = ttk.Button(cmd_frame,
                                  text="Fe/Iron",
                                  command=lambda: plotter('CT','fe'))  
         #    button6.pack(side=LEFT)
-        button7 = Button(self,
+        button7 = ttk.Button(cmd_frame,
                                  text="Cu/Copper",
                                  command=lambda: plotter('CT','Cu'))  
         #    button7.pack(side=LEFT)
-        button8 = Button(self,
+        button8 = ttk.Button(cmd_frame,
                                  text="Hardness",
                                  command=lambda: plotter('CT','Hardness'))  
         #    button8.pack(side=LEFT)
-        button9 = Button(self,
+        button9 = ttk.Button(cmd_frame,
                                  text="Zn/Zinc",
-                                 command=lambda: plotter('CT','Zn'))  
-        button11 = Button(self,
-                                 text="Closed Loop TDS",
-                                 command=lambda: plotter('CL','cltds'))  
-        button12 = Button(self,
-                                 text="Closed Loop pH",
-                                 command=lambda: plotter('CL','clph')) 
-        button13 = Button(self,
-                                 text="Closed Loop Nitrite",
-                                 command=lambda: plotter('CL','nitrite'))  
-        button14 = Button(self,
+                                 command=lambda: plotter('CT','Zn'))   
+        button14 = ttk.Button(cmd_frame,
                                  text="FATP & TATP",
                                  command=lambda: plotter('CT','atp'))  
-        button15 = Button(self,
+        button15 = ttk.Button(cmd_frame,
                          text="Conductivity",
                          command=lambda: plotter('CT','cond')) 
-        #    button9.pack(side=LEFT)
-        button1.grid(row=0, column=0, rowspan=1, sticky='EWNS')
-        button2.grid(row=0, column=1, columnspan=1, sticky='EWNS')
-        button3.grid(row=0, column=2, columnspan=1, sticky='EWNS')
-        button4.grid(row=0, column=3, columnspan=1, sticky='EWNS')
-        button5.grid(row=0, column=4, columnspan=1, sticky='EWNS')
-        button6.grid(row=0, column=5, columnspan=1, sticky='EWNS')
-        button7.grid(row=0, column=6, columnspan=1, sticky='EWNS')
-        button8.grid(row=0, column=7, columnspan=1, sticky='EWNS')
-        button9.grid(row=1, column=0, columnspan=1, sticky='EWNS')
-        button14.grid(row=1, column=1, columnspan=1, sticky='EWNS')
-        button15.grid(row=1, column=2, columnspan=1, sticky='EWNS')
-        button10.grid(row=1, column=3, columnspan=1, sticky='EWNS')
-        button11.grid(row=1, column=4, columnspan=1, sticky='EWNS')
-        button12.grid(row=1, column=5, columnspan=1, sticky='EWNS')
-        button13.grid(row=1, column=6, columnspan=1, sticky='EWNS')
-
-if __name__ == "__main__":
-
-    app = App()
-    app.rowconfigure((0,1), weight=1)  # make buttons stretch when
-    app.columnconfigure((0,7), weight=1)  # when window is resized
-    app.wm_title("Air Canada Trends")
-    app.iconbitmap('aircanadaicon.ico')
-    
-    def on_closing():
-        app.destroy()
-        app.quit()
         
-    def change_directory():
-        root = Tk()
-        root.withdraw()
-        messagebox.showinfo('Air Canada Trends', 'Please select the folder that contains the excel report files.')
-        dirname = askdirectory(parent=root,initialdir="/",title='Please select a directory')+'/'
-        root.destroy()
-        with open('settings.txt', 'w') as output_file:
-            data_txt[0] = dirname+'\n'
-            output_file.write(data_txt)
-        
-    app.protocol("WM_DELETE_WINDOW", on_closing)
-    app.mainloop()
+        button1.grid(row=0, column=0, rowspan=1, sticky=tk.E + tk.W + tk.N + tk.S)
+        button2.grid(row=0, column=1, columnspan=1, sticky=tk.E + tk.W + tk.N + tk.S)
+        button3.grid(row=0, column=2, columnspan=1, sticky=tk.E + tk.W + tk.N + tk.S)
+        button4.grid(row=0, column=3, columnspan=1, sticky=tk.E + tk.W + tk.N + tk.S)
+        button5.grid(row=0, column=4, columnspan=1, sticky=tk.E + tk.W + tk.N + tk.S)
+        button6.grid(row=0, column=5, columnspan=1, sticky=tk.E + tk.W + tk.N + tk.S)
+        button7.grid(row=1, column=0, columnspan=1, sticky=tk.E + tk.W + tk.N + tk.S)
+        button8.grid(row=1, column=1, columnspan=1, sticky=tk.E + tk.W + tk.N + tk.S)
+        button9.grid(row=1, column=2, columnspan=1, sticky=tk.E + tk.W + tk.N + tk.S)
+        button14.grid(row=1, column=3, columnspan=1, sticky=tk.E + tk.W + tk.N + tk.S)
+        button15.grid(row=1, column=4, columnspan=1, sticky=tk.E + tk.W + tk.N + tk.S)
+
+        # - - - - - - - - - - - - - - - - - - - - -
+        # The Data entry frame
+        entry_frame = ttk.LabelFrame(self.window, text="CL Tests",
+                                     relief=tk.RIDGE)
+        entry_frame.grid(row=2, column=1, sticky=tk.E + tk.W + tk.N + tk.S)
+
+        button11 = ttk.Button(entry_frame,
+                                 text="Closed Loop TDS",
+                                 command=lambda: plotter('CL','cltds'))  
+        button12 = ttk.Button(entry_frame,
+                                 text="Closed Loop pH",
+                                 command=lambda: plotter('CL','clph')) 
+        button13 = ttk.Button(entry_frame,
+                                 text="Closed Loop Nitrite",
+                                 command=lambda: plotter('CL','nitrite'))
+        button11.grid(row=0, column=0, rowspan=1, sticky=tk.E + tk.W + tk.N + tk.S)
+        button12.grid(row=0, column=1, columnspan=1, sticky=tk.E + tk.W + tk.N + tk.S)
+        button13.grid(row=0, column=2, columnspan=1, sticky=tk.E + tk.W + tk.N + tk.S)
+
+        # - - - - - - - - - - - - - - - - - - - - -
+        # Menus
+        menubar = tk.Menu(self.window)
+
+        filemenu = tk.Menu(menubar, tearoff=0)
+        filemenu.add_command(label="Exit", command=lambda: on_exit(self.window))
+        filemenu.add_command(label = 'Change file directory', command=change_directory)
+        menubar.add_cascade(label="File", menu=filemenu)
+
+        self.window.config(menu=menubar)
+
+        # - - - - - - - - - - - - - - - - - - - - -
+
+# Create the entire GUI program
+program = app()
+
+
+
+# Start the GUI event loop
+program.window.mainloop()
