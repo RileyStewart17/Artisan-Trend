@@ -19,7 +19,6 @@ from tkinter import messagebox
 ## prompt user if new sample found
 ## Append to CTdata/CLdata if only one table present
 ## Load sample names from somewhere + have menu to change names
-## Add dropdown for changing directory
 
 #----------------------------------------------------------------------
 
@@ -35,6 +34,7 @@ try:
         data_txt=text_file.readlines()
         text_file.close()
     dirname = data_txt[0][:-1]
+    
 except:
     root = tk.Tk()
     root.withdraw()
@@ -55,18 +55,29 @@ try:
     CTlabels = data_txt[(ind_labels[0]+1):][:(ind_labels[1]-2)]
     CLlabels = data_txt[(ind_labels[1]+1):]
     for i in range(len(CTlabels)):
-        labels.append(CTlabels[i][:-1])
+        labels.append(CTlabels[i].strip())
         labels_sub.append(labels[i][:3].lower())
     for i in range(len(CLlabels)):
-        cl_labels.append(CLlabels[i][:-1])
+        cl_labels.append(CLlabels[i].strip())
         cl_labels_sub.append(cl_labels[i][:3].lower())
 except:
     pass
 
 ACdir = dirname
 
-onlyfilesAC = [f for f in listdir(ACdir) if isfile(join(ACdir, f))] # List of files present in directory
-onlyfilesAC = [i for i in onlyfilesAC if 'xlsx' in i] # grabs list of files present in directory that are excel worksheets
+try:
+    onlyfilesAC = [f for f in listdir(ACdir) if isfile(join(ACdir, f))] # List of files present in directory
+    onlyfilesAC = [i for i in onlyfilesAC if 'xlsx' in i] # grabs list of files present in directory that are excel worksheets
+except:
+    root = tk.Tk()
+    root.withdraw()
+    messagebox.showinfo('Air Canada Trends', 'Error loading files. Please re-select the folder that contains the excel report files.')
+    dirname = askdirectory(parent=root,initialdir="/",title='Please select a directory')+'/'
+    root.destroy()
+    with open("settings.txt", "w") as text_file:
+        text_file.write(dirname+'\n')
+    onlyfilesAC = [f for f in listdir(ACdir) if isfile(join(ACdir, f))] # List of files present in directory
+    onlyfilesAC = [i for i in onlyfilesAC if 'xlsx' in i] # grabs list of files present in directory that are excel worksheets
 
 
 #----------------------------------------------------------------------
@@ -85,7 +96,7 @@ def open_file(path):
 AClist = []
 for i in range(len(onlyfilesAC)):
     AClist.append(open_file(ACdir + onlyfilesAC[i]))
-
+    
 #----------------------------------------------------------------------
     
 # This function takes a open sheet ('file') and parses through the sheet,
@@ -100,7 +111,8 @@ for i in range(len(onlyfilesAC)):
 #    to CTdata
 
 def pulldata(file):
-    ban1 = ['target', 'Target']  # Contains banned strings
+    global labels, labels_sub, cl_labels, cl_labels_sub
+    ban1 = ['target', 'Target']  # Contains banned strings, to avoid certain lines
     d={} # create dictionary to contain CTdata
     c=0  # This are all used as indexes later on, reset to 0
     v=0
@@ -136,29 +148,29 @@ def pulldata(file):
 # are contained just below, so this loop pulls that particular data if this occurs
 
     for i in range(4):                       
-        x = file.row_values(c+v+1+i)         
+        x = file.row_values(c+v+1+i)   # Searching just below the end of the top data table      
         if 'Sample' in x:                   
             t = i+c+v+1
             d2 = {}
-            variables2 = np.array(file.row_values(t))
+            variables2 = np.array(file.row_values(t))  # Contains test names from second table
             for i1 in range(len(CTdata)+1):
                 x = file.row_values(t+1+i1)
                 if x[0] not in ['', 'target', 'Target']:
-                    d2["data{0}".format(i1)] = np.array(x)
+                    d2["data{0}".format(i1)] = np.array(x) # Append data to dictionary if present in second table
                 if x[0] in ban1:
                     t2 = t+2+i1
                     break
                 t2 = t+2+i1
-            data2 = list(d2.values())
-            lis = []
-            lis2 = [item[0] for item in CTdata]
-            stacked = False
+            data2 = list(d2.values())  # Contains data from the second table
+            lis = []  # to contain data from the both stacked tables
+            lis2 = [item[0] for item in CTdata] # Grabbing the sample names in the first table
+            stacked = False  # Assume data is not stacked (i.e. the second table below the first contains new samples)
             for i2 in range(len(data2)):
-                if data2[i2][0] in lis2:
+                if data2[i2][0] in lis2: # Checking to see if duplicate sample names both tables
                     ind = np.where(np.array(lis2) == data2[i2][0])[0][0]
-                    lis.append(np.concatenate((CTdata[ind], data2[i2][1:])))
+                    lis.append(np.concatenate((CTdata[ind], data2[i2][1:]))) # If so, stitch lists from the two stacked tables, append to lis
                     stacked = True
-            if not stacked:
+            if not stacked:  # If the samples are different
                 for l in range(5):
                     for o in range(len(CTvariables)):
                         if variables2[o] != CTvariables[o]:
@@ -238,14 +250,15 @@ def pulldata(file):
                     for v in range(len(wrong_names)):
                         ind_lab = np.where(np.array(labels_loc) == wrong_names[v])[0][0]
                         CTdata = [[x.replace(wrong_names[v], diff_names[v]) for x in i] for i in CTdata]
-                        labels_loc = [i.replace(wrong_names[v], diff_names[v])for i in labels_loc] 
+                        labels_loc = [i.replace(wrong_names[v], diff_names[v])for i in labels_loc]
             else:
                 wrong_names = np.setdiff1d(labels_loc, labels)
                 diff_names = np.setdiff1d(labels, labels_loc)
                 for v in range(len(wrong_names)):
                     ind_lab = np.where(np.array(labels_loc) == wrong_names[v])[0][0]
                     CTdata = [[x.replace(wrong_names[v], diff_names[v]) for x in i] for i in CTdata]
-                    labels_loc = [i.replace(wrong_names[v], diff_names[v])for i in labels_loc]                   
+                    labels_loc = [i.replace(wrong_names[v], diff_names[v])for i in labels_loc]
+            
     together = zip(labels_loc, CTdata)
     sorted_together =  sorted(together, key=lambda x: x[0].lower())     
     labels_loc = [x[0] for x in sorted_together]
@@ -280,6 +293,31 @@ def pulldata(file):
     sorted_together =  sorted(together, key=lambda x: x[0].lower())     
     cl_labels_loc = [x[0] for x in sorted_together]
     CLdata = [x[1] for x in sorted_together]
+    
+#    if len(labels) == 0:
+#        together = zip(labels_loc_3, labels_loc)
+#        sorted_together = sorted(together, key=lambda x: x[0].lower())
+#        
+#        labels = [item[1] for item in sorted_together]
+#        labels_sub = [item[0] for item in sorted_together]
+#        
+#        labels_loc = [item[0] + '\n' for item in sorted_together]
+#        labels_loc.append('\n')
+#        
+#        
+#        together = zip(cl_labels_loc_3, cl_labels_loc)
+#        sorted_together = sorted(together, key=lambda x: x[0].lower())
+#
+#        cl_labels = [item[1] for item in sorted_together]
+#        cl_labels_sub = [item[0] for item in sorted_together]
+#        
+#        
+#        cl_labels_loc = [item[0] + '\n' for item in sorted_together]
+#        cl_labels_loc.append('\n')
+#        full_lst = [ACdir+'\n', '\n'] + labels_loc + cl_labels_loc
+#        with open('settings.txt', 'w') as text_file:
+#            text_file.writelines(full_lst)
+        
 
 
     return CTvariables, CTdata, CLvariables, CLdata
@@ -323,9 +361,6 @@ def date(filename):  #filename is a string
             datetime_object = datetime.strptime(date_str, '%b%d%Y')
         datestr = datetime_object.strftime('%Y-%m-%d')
         return datestr
-    elif 'report' in filename:
-        date_str = filename.split('report')[1][:-5]
-        return datestr
 
 dates = []
             
@@ -335,48 +370,65 @@ date_temp = zip(dates, AClist)
 date_temp_sorted =  sorted(date_temp, key=lambda x: datetime.strptime(x[0], '%Y-%m-%d'))
 dates = [x[0] for x in date_temp_sorted]
 AClist = [x[1] for x in date_temp_sorted]
+dates_title = [dates[0], dates[len(dates)-1]]
+dates_title = [datetime.strptime(item, '%Y-%m-%d').strftime('%B %Y') for item in dates_title]
+
+def change_directory_variable(updated_variable):
+    global dirname
+    dirname = updated_variable
+    
 
 def change_directory():
     root = tk.Tk()
     root.withdraw()
     messagebox.showinfo('Air Canada Trends', 'Please select the folder that contains the excel report files.')
-    dirname = askdirectory(parent=root,initialdir="/",title='Please select a directory')+'/'
+    dirname2 = askdirectory(parent=root,initialdir="/",title='Please select a directory')+'/'
     root.destroy()
     with open('settings.txt', 'w') as output_file:
-        data_txt[0] = dirname+'\n'
+        data_txt[0] = dirname2+'\n'
         for line in data_txt:
             output_file.write(line)
-        
-#def dummy():
-#    on_exit()
-#    
-#def on_exit():
-#    dummy()
+    change_directory_variable(dirname2)
     
+def change_samples(arg):
+    program = listbox(arg)
+    program.window.mainloop()
+
+
 def on_exit(window):
     window.destroy()
     window.quit()
 
 def plotter(system, test):
+    global labels, labels_sub, cl_labels, cl_labels_sub
     datadict = {}
     datadict2 = {}
     
     ban = ('', 'system drained', '-', 'drained')
     ban2 = ('>', '<')
+#    ban3 = ('', ' ', 'sample', 'target')
+#    ban4 = ('sample', 'target')
     keysnom = ('TDS', 'ORP', 'Cu', 'Zn', 'pH')
-    NumCT = []
     
     if system == 'CT':
-        for i in range(len(AClist)):
-            x = len(pulldata(AClist[i])[1])
-            NumCT.append(x)
-        NCT = max(NumCT)
-        maxindCT = np.where(np.array(NumCT) == NCT)[0][0]
-        labels = []
-        for i in range(NCT):
-            labels.append(pulldata(AClist[maxindCT])[1][i][0])
+#        labels = []
+#        labels_sub = []
+#        for i in range(len(AClist)):
+#            for v in range(100):
+#                x = AClist[i].cell(v,0)
+#                if x == 'Sample':
+#                    sample_ind = v
+#                    break
+#            for v in range(10):
+#                x = AClist[i].cell(sample_ind+v+1)
+#                if x.lower() not in ban3:
+#                    if x[:3].lower() not in labels_sub:
+#                        labels.append(x)
+#                        labels_sub.append(x[:3].lower())
+#                if x.lower() == 'target':
+
+        NCT = len(labels)
         
-        #totdata = np.array([NCT,len(AClist)])
         for i in range(NCT):
             data = []
             data2 = []
@@ -506,8 +558,8 @@ def plotter(system, test):
                         pass
                     
             if test.lower() in ('hardness', 'ca', 'ca hardness', 'mg hardness', 'total hardness'):
-                name = 'Ca'
-                name2 = 'Mg'
+                name = 'Ca Hardness'
+                name2 = 'Mg Hardness'
                 for t in range(len(AClist)):
                     try:
                         d1 = pulldata(AClist[t])[1][i]
@@ -581,20 +633,13 @@ def plotter(system, test):
                 
 
     if system == 'CL':
-        for i in range(len(AClist)):
-            x = len(pulldata(AClist[i])[3])
-            NumCT.append(x)
-        NCT = max(NumCT)
-        maxindCL = np.where(np.array(NumCT) == NCT)[0][0]
-        labels = []
-        for i in range(NCT):
-            labels.append(pulldata(AClist[maxindCL])[3][i][0])
-        #totdata = np.array([NCT,len(AClist)])
+        NCT = len(cl_labels)
+        labels = cl_labels
         for i in range(NCT):
             data = []
             data2 = []
             if test.lower() in ('nitrite'):
-                name = 'Nitrite'
+                name = 'Closed Loop Nitrite'
                 for t in range(len(AClist)):
                     try:
                         d1 = pulldata(AClist[t])[3][i]
@@ -612,7 +657,7 @@ def plotter(system, test):
                         pass
                     
             if test.lower() in ('cltds'):
-                name = 'TDS'
+                name = 'Closed Loop TDS'
                 for t in range(len(AClist)):
                     try:
                         d1 = pulldata(AClist[t])[3][i]
@@ -630,11 +675,47 @@ def plotter(system, test):
                         pass
                     
             if test.lower() in ('clph'):
-                name = 'pH'
+                name = 'Closed Loop pH'
                 for t in range(len(AClist)):
                     try:
                         d1 = pulldata(AClist[t])[3][i]
                         ind = np.where(pulldata(AClist[t])[2] == 'pH')[0][0]
+                        u1 = d1[ind]
+                        if u1 in ban:
+                            u1 = np.nan
+                        elif u1[0] in ban2:
+                            u1 = u1[1:]
+                            if u1[-1] in ban2:
+                                u1 = u1[:-1]
+                        data.append(float(u1))
+                    except:
+                        data.append(np.nan)
+                        pass
+                    
+            if test.lower() in ('clcu'):
+                name = 'Closed Loop Cu'
+                for t in range(len(AClist)):
+                    try:
+                        d1 = pulldata(AClist[t])[3][i]
+                        ind = np.where(pulldata(AClist[t])[2] == 'Cu')[0][0]
+                        u1 = d1[ind]
+                        if u1 in ban:
+                            u1 = np.nan
+                        elif u1[0] in ban2:
+                            u1 = u1[1:]
+                            if u1[-1] in ban2:
+                                u1 = u1[:-1]
+                        data.append(float(u1))
+                    except:
+                        data.append(np.nan)
+                        pass
+                    
+            if test.lower() in ('clfe'):
+                name = 'Closed Loop Fe'
+                for t in range(len(AClist)):
+                    try:
+                        d1 = pulldata(AClist[t])[3][i]
+                        ind = np.where(pulldata(AClist[t])[2] == 'Fe')[0][0]
                         u1 = d1[ind]
                         if u1 in ban:
                             u1 = np.nan
@@ -726,6 +807,27 @@ def plotter(system, test):
                 }
             )
         data = data + data2
+    title = name
+    if len(datadict2) != 0:
+        title = name + ' & ' + name2
+    if test.lower() in ('tds', 'cltds'):
+        y_title = 'TDS (ppm)'
+    if test.lower() in ('cu', 'fe', 'cl', 'zn', 'po4', 'nitrite', 'malk', 'hardness', 'clcu', 'clfe'):
+        if len(datadict2) != 0:
+            y_title = name + ' & ' + name2 + ' (mg/L)'
+        else:
+            y_title = name + ' (mg/L)'
+    if test.lower() in ('ph', 'clph'):
+        if len(datadict2) != 0:
+            y_title = name + ' & ' + name2
+        else:
+            y_title = name
+    if test.lower() == 'orp':
+        y_title = 'ORP (mV)'
+    if test.lower() == 'atp':
+        y_title = name + ' & ' + name2 + ' (RLU)'
+    if test.lower() == 'cond':
+        y_title = 'Conductivity (μS)'
     
     layout = {
     #  "annotations": [
@@ -801,7 +903,7 @@ def plotter(system, test):
     #    'xanchor': "right",
     #    'yanchor': "bottom"
     #  }],
-      'title': 'Plot',
+      'title': title,
       'hovermode': 'closest',
       "xaxis": {
         "autorange": True,
@@ -828,7 +930,7 @@ def plotter(system, test):
                 ]
         },
         "rangeslider": {
-          "autorange": True, 
+          "autorange": True,
           "range": [min(dates), max(dates)]
         },
         "type": "date"
@@ -845,7 +947,7 @@ def plotter(system, test):
         "tickfont": {"color": '#000000'}, 
         "tickmode": "auto", 
         "ticks": "",
-        "title": "mg/L",
+        "title": y_title,
         "titlefont": {"color": '#000000'}, 
         "type": "linear", 
         "zeroline": False
@@ -866,202 +968,21 @@ def plotter(system, test):
 #        "titlefont": {"color": colors[1]}, 
 #        "type": "linear", 
 #        "zeroline": False
-#      }, 
-#      "yaxis3": {
-#        "anchor": "x", 
-#        "autorange": True, 
-#        "domain": [2*1/len(data)+0.1*1/len(data), 3*1/len(data)-0.1*1/len(data)], 
-#        "linecolor": colors[2], 
-#        "mirror": True, 
-#        "range": [-3.73690396239, 22.2369039624], 
-#        "showline": True, 
-#        "side": "right", 
-#        "tickfont": {"color": colors[2]}, 
-#        "tickmode": "auto", 
-#        "ticks": "", 
-#        "title": "mg/L", 
-#        "titlefont": {"color": colors[2]}, 
-#        "type": "linear", 
-#        "zeroline": False
-#      }, 
-#      "yaxis4": {
-#        "anchor": "x", 
-#        "autorange": True, 
-#        "domain": [3*1/len(data)+0.1*1/len(data), 4*1/len(data)-0.1*1/len(data)], 
-#        "linecolor": colors[3], 
-#        "mirror": True, 
-#        "range": [6.63368032236, 8.26631967764], 
-#        "showline": True, 
-#        "side": "right", 
-#        "tickfont": {"color": colors[3]}, 
-#        "tickmode": "auto", 
-#        "ticks": "", 
-#        "title": "mg/L", 
-#        "titlefont": {"color": colors[3]}, 
-#        "type": "linear", 
-#        "zeroline": False
-#      }, 
-#      "yaxis5": {
-#        "anchor": "x", 
-#        "autorange": True, 
-#        "domain": [4*1/len(data)+0.1*1/len(data), 5*1/len(data)-0.1*1/len(data)], 
-#        "linecolor": colors[4], 
-#        "mirror": True, 
-#        "range": [-685.336803224, 3718.33680322], 
-#        "showline": True, 
-#        "side": "right", 
-#        "tickfont": {"color": colors[4]}, 
-#        "tickmode": "auto",
-#        "ticks": "", 
-#        "title": "mg/L", 
-#        "titlefont": {"color": colors[4]}, 
-#        "type": "linear", 
-#        "zeroline": False
-#      }, 
-#      "yaxis6": {
-#        "anchor": "x", 
-#        "autorange": True, 
-#        "domain": [5*1/len(data)+0.1*1/len(data), 6*1/len(data)-0.1*1/len(data)], 
-#        "linecolor": colors[5], 
-#        "mirror": True, 
-#        "range": [-500, 3000], 
-#        "showline": True, 
-#        "side": "right", 
-#        "tickfont": {"color": colors[5]}, 
-#        "tickmode": "auto",
-#        "ticks": "", 
-#        "title": "mg/L", 
-#        "titlefont": {"color": colors[5]}, 
-#        "type": "linear", 
-#        "zeroline": False
       }
     }
     fig = go.Figure(data=data, layout=layout)
-    py2.offline.plot(fig, auto_open=True, filename='Trend.html', image_filename='Trend')
-    
-
-
-#class App(Tk):
-#    def __init__(self):
-#        Tk.__init__(self)
-#        menuBar = MenuBar(self)
-#        buttonBar = ButtonBar(self)
-#
-#        self.config(menu=menuBar)
-#        cmd_frame = LabelFrame(buttonBar, text="Commands", relief=RIDGE, padx=12)
-#        cmd_frame.grid(row=0, column=1, sticky='EWNS')
-#        buttonBar.grid()
-#
-#
-#class MenuBar(Menu):
-#    def __init__(self, parent):
-#        Menu.__init__(self, parent)
-#
-#        fileMenu = Menu(self, tearoff=False)
-#        self.add_cascade(label="File", menu=fileMenu)
-#        fileMenu.add_command(label="Exit", command=dummy)
-#        fileMenu.add_command(label = 'Change file directory', command=change_directory)
-#
-#class ButtonBar(Frame):
-#    def __init__(self, parent):
-#        Frame.__init__(self, parent)
-#        button1 = Button(self,
-#                         text="TDS",
-#                         command=lambda: plotter('CT', 'TDS'))  
-#        #    button1.pack(side=LEFT)
-#        button2 = Button(self,
-#                                 text="ORP",
-#                                 command= lambda: plotter('CT','ORP'))
-#        #    button2.pack(side=LEFT)
-#        button3 = Button(self,
-#                                 text="pH",
-#                                 command=lambda: plotter('CT','pH'))  
-#        #    button3.pack(side=LEFT)
-#        button10 = Button(self,
-#                                 text="M. Alk",
-#                                 command=lambda: plotter('CT','malk'))  
-#        #    button10.pack(side=LEFT)
-#        button4 = Button(self,
-#                                 text="PO4 & PhO4",
-#                                 command=lambda: plotter('CT','po4')) 
-#        #    button4.pack(side=LEFT)
-#        button5 = Button(self,
-#                                 text="Chlorine",
-#                                 command=lambda: plotter('CT','cl'))  
-#        #    button5.pack(side=LEFT)
-#        button6 = Button(self,
-#                                 text="Fe/Iron",
-#                                 command=lambda: plotter('CT','fe'))  
-#        #    button6.pack(side=LEFT)
-#        button7 = Button(self,
-#                                 text="Cu/Copper",
-#                                 command=lambda: plotter('CT','Cu'))  
-#        #    button7.pack(side=LEFT)
-#        button8 = Button(self,
-#                                 text="Hardness",
-#                                 command=lambda: plotter('CT','Hardness'))  
-#        #    button8.pack(side=LEFT)
-#        button9 = Button(self,
-#                                 text="Zn/Zinc",
-#                                 command=lambda: plotter('CT','Zn'))  
-#        button11 = Button(self,
-#                                 text="Closed Loop TDS",
-#                                 command=lambda: plotter('CL','cltds'))  
-#        button12 = Button(self,
-#                                 text="Closed Loop pH",
-#                                 command=lambda: plotter('CL','clph')) 
-#        button13 = Button(self,
-#                                 text="Closed Loop Nitrite",
-#                                 command=lambda: plotter('CL','nitrite'))  
-#        button14 = Button(self,
-#                                 text="FATP & TATP",
-#                                 command=lambda: plotter('CT','atp'))  
-#        button15 = Button(self,
-#                         text="Conductivity",
-#                         command=lambda: plotter('CT','cond')) 
-#        #    button9.pack(side=LEFT)
-#        button1.grid(row=0, column=0, rowspan=1, sticky='EWNS')
-#        button2.grid(row=0, column=1, columnspan=1, sticky='EWNS')
-#        button3.grid(row=0, column=2, columnspan=1, sticky='EWNS')
-#        button4.grid(row=0, column=3, columnspan=1, sticky='EWNS')
-#        button5.grid(row=0, column=4, columnspan=1, sticky='EWNS')
-#        button6.grid(row=0, column=5, columnspan=1, sticky='EWNS')
-#        button7.grid(row=0, column=6, columnspan=1, sticky='EWNS')
-#        button8.grid(row=0, column=7, columnspan=1, sticky='EWNS')
-#        button9.grid(row=1, column=0, columnspan=1, sticky='EWNS')
-#        button14.grid(row=1, column=1, columnspan=1, sticky='EWNS')
-#        button15.grid(row=1, column=2, columnspan=1, sticky='EWNS')
-#        button10.grid(row=1, column=3, columnspan=1, sticky='EWNS')
-#        button11.grid(row=1, column=4, columnspan=1, sticky='EWNS')
-#        button12.grid(row=1, column=5, columnspan=1, sticky='EWNS')
-#        button13.grid(row=1, column=6, columnspan=1, sticky='EWNS')
-#
-#if __name__ == "__main__":
-#
-#    app = App()
-#    app.rowconfigure((0,1), weight=1)  # make buttons stretch when
-#    app.columnconfigure((0,7), weight=1)  # when window is resized
-#    app.wm_title("Air Canada Trends")
-#    app.iconbitmap('aircanadaicon.ico')    
-#    def on_closing():
-#        app.destroy()
-#        app.quit() 
-#        
-#    app.protocol("WM_DELETE_WINDOW", on_closing)
-#    app.mainloop()
+    py2.offline.plot(fig, auto_open=True, filename='Trend ({} - {}).html'.format(dates_title[0], dates_title[1]), image_filename='Trend')
 
 class app():
     def __init__(self):
         self.window = tk.Tk()
         self.window.title("Air Canada Trends")
-        self.window.iconbitmap('aircanadaicon.ico')        
+        self.window.iconbitmap('aircanadaicon.ico')       
         self.create_widgets()
+        self.window.grid()
 
         self.radio_variable = tk.StringVar()
         self.combobox_value = tk.StringVar()
-#        def on_exit():
-#            self.window.quit()
-#            self.window.destroy()
         self.window.protocol("WM_DELETE_WINDOW", lambda: on_exit(self.window))
 
     def create_widgets(self):
@@ -1131,6 +1052,7 @@ class app():
         button9.grid(row=1, column=2, columnspan=1, sticky=tk.E + tk.W + tk.N + tk.S)
         button14.grid(row=1, column=3, columnspan=1, sticky=tk.E + tk.W + tk.N + tk.S)
         button15.grid(row=1, column=4, columnspan=1, sticky=tk.E + tk.W + tk.N + tk.S)
+        button10.grid(row=1, column=5, columnspan=1, sticky=tk.E + tk.W + tk.N + tk.S)
 
         # - - - - - - - - - - - - - - - - - - - - -
         # The Data entry frame
@@ -1147,9 +1069,17 @@ class app():
         button13 = ttk.Button(entry_frame,
                                  text="Closed Loop Nitrite",
                                  command=lambda: plotter('CL','nitrite'))
+        button16 = ttk.Button(entry_frame,
+                                 text="Closed Loop Cu",
+                                 command=lambda: plotter('CL','clcu'))
+        button17 = ttk.Button(entry_frame,
+                                 text="Closed Loop Fe",
+                                 command=lambda: plotter('CL','clfe'))
         button11.grid(row=0, column=0, rowspan=1, sticky=tk.E + tk.W + tk.N + tk.S)
         button12.grid(row=0, column=1, columnspan=1, sticky=tk.E + tk.W + tk.N + tk.S)
         button13.grid(row=0, column=2, columnspan=1, sticky=tk.E + tk.W + tk.N + tk.S)
+        button16.grid(row=0, column=3, columnspan=1, sticky=tk.E + tk.W + tk.N + tk.S)
+        button17.grid(row=0, column=4, columnspan=1, sticky=tk.E + tk.W + tk.N + tk.S)
 
         # - - - - - - - - - - - - - - - - - - - - -
         # Menus
@@ -1158,11 +1088,92 @@ class app():
         filemenu = tk.Menu(menubar, tearoff=0)
         filemenu.add_command(label="Exit", command=lambda: on_exit(self.window))
         filemenu.add_command(label = 'Change file directory', command=change_directory)
+        filemenu.add_command(label = 'Change CT sample entries', command =lambda: change_samples('ct'))
+        filemenu.add_command(label = 'Change CL sample entries', command =lambda: change_samples('cl'))
         menubar.add_cascade(label="File", menu=filemenu)
 
         self.window.config(menu=menubar)
 
         # - - - - - - - - - - - - - - - - - - - - -
+        
+class listbox():
+    def __init__(self, *args):
+        self.args = args[0]
+        self.window = tk.Tk()
+        self.window.title('CT Sample Entries')
+        self.window.iconbitmap('aircanadaicon.ico')       
+        self.create_widgets()
+        self.window.grid()
+        self.window.protocol("WM_DELETE_WINDOW", lambda: on_exit(self.window))
+    def create_widgets(self):
+        self.window['padx'] = 5
+        self.window['pady'] = 5
+        listbox1 = tk.Listbox(self.window, width=50, height=10)
+        listbox1.grid(row=0, column=0)
+        
+        def save_list():
+            global labels, labels_sub, cl_labels, cl_labels_sub
+            # get a list of listbox lines
+            temp_list = list(listbox1.get(0, tk.END))
+            if self.args == 'ct':
+                labels = temp_list
+                labels_sub = [item[:3].lower() for item in labels]
+                # add a trailing newline char to each line
+                temp_list = [item + '\n' for item in temp_list]
+                cl_labels_temp = [item+ '\n' for item in cl_labels]
+                with open("settings.txt", "w") as text_file:
+                    full_lst = [dirname + '\n', '\n']+temp_list+ ['\n'] + cl_labels_temp
+                    for item in full_lst:
+                        text_file.writelines(item)
+                text_file.close()
+            if self.args == 'cl':
+                cl_labels = temp_list
+                cl_labels_sub = [item[:3].lower() for item in cl_labels]
+                # add a trailing newline char to each line
+                temp_list = [item + '\n' for item in temp_list]
+                labels_temp = [item+ '\n' for item in labels]
+                with open("settings.txt", "w") as text_file:
+                    full_lst = [dirname + '\n', '\n']+labels_temp+ ['\n'] + temp_list
+                    for item in full_lst:
+                        text_file.writelines(item)
+                text_file.close()
+                
+        def add_item():
+            if text_entry.get() != '':
+                listbox1.insert(tk.END, text_entry.get())
+        def delete_item():
+            try:
+                # get selected line index
+                index = listbox1.curselection()[0]
+                listbox1.delete(index)
+            except IndexError:
+                pass
+         
+        # create a vertical scrollbar to the right of the listbox
+        yscroll = tk.Scrollbar(self.window, command=listbox1.yview, orient=tk.VERTICAL)
+        yscroll.grid(row=0, column=1, sticky=tk.N+tk.S)
+        listbox1.configure(yscrollcommand=yscroll.set)
+        text_entry = ttk.Entry(self.window, width = 42)
+        text_entry.grid(row = 2, column=0, sticky = tk.E)
+        text_label = ttk.Label(self.window, text="Sample:")
+        text_label.grid(row=2, column=0, sticky=tk.W, pady=3)
+        # button to save the listbox's data lines to a file
+        button2 = tk.Button(self.window, text='Save lines to file', command=save_list)
+        button2.grid(row=4, column=0, sticky=tk.W)
+        # button to add a line to the listbox
+        button3 = tk.Button(self.window, text='Add entry text to listbox', command=add_item)
+        button3.grid(row=3, column=0, sticky=tk.E)
+        # button to delete a line from listbox
+        button4 = tk.Button(self.window, text='Delete selected line', command=delete_item)
+        button4.grid(row=3, column=0, sticky=tk.W)
+        # load the listbox with data
+        if self.args == 'ct':
+            data = labels
+        if self.args == 'cl':
+            data = cl_labels
+        for item in data:
+            listbox1.insert(tk.END, item)
+
 
 # Create the entire GUI program
 program = app()
