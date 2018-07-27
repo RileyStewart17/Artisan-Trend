@@ -5,10 +5,6 @@ from os import listdir
 from os.path import isfile, join
 import configparser as configparser
 from difflib import get_close_matches
-# Created by Riley Stewart for Artisan Engineering.
-# Not to be copied, used, or revised without explicit written 
-# permission from the author and Artisan Engineering.
-
 import xlrd
 import tkinter as tk
 from tkinter import ttk
@@ -16,26 +12,39 @@ from datetime import datetime
 from tkinter.filedialog import askdirectory
 from tkinter import messagebox
 
-## prompt user if new sample found
-## Append to CTdata/CLdata if only one table present
-## Load sample names from somewhere + have menu to change names
+# Created by Riley Stewart for Artisan Engineering.
+# Not to be copied, used, or revised without explicit written 
+# permission from the author and Artisan Engineering.
+
+# This script is designed to take data contained in excel worksheets produced
+# by Artisan Engineering Ltd. and produce plots for each test parameter. These
+# plots are produced as fully interactive .html files, which can be opened using
+# any web browser. 
+
 
 #----------------------------------------------------------------------
+#                           SECTION: SETUP
 
 # This loads the directory of the files + the sample names for future use. The
 # script first trys to open the 'settings.txt' file to pull the directory; if
 # such a file doesn't exist, the user is prompted to select directory using a menu.
-# The 'settings.txt' file is then created with the directory stored. The labels
-# for the samples are then pulled from the settings file. 
+# The 'settings.ini' file is then created with the directory stored. The labels
+# for the samples are then pulled from the settings file, as well as alternate
+# names for each of the samples.
 
 
-try:
+try: 
+    # To maintain case-sensitivity, load config parser + change form    
     config = configparser.RawConfigParser()
     config.optionxform = str 
+    
+    # Attemp to load the config file
     config.read('settings.ini')
     dirname = config['Directory']['Location']
     
 except:
+    # If the config file fails to be loaded, create the config file with
+    # the correct directory listed, using a tkinter menu
     root = tk.Tk()
     root.withdraw()
     messagebox.showinfo('Air Canada Trends', 'Please select the folder that contains the excel report files.')
@@ -44,62 +53,79 @@ except:
     if dirname != '/':
         config = configparser.RawConfigParser()
         config.optionxform = str 
+        
+        # .set sets a variable in the config.ini to something new, in this case the directory
         config.set('Directory', 'Location', dirname)
         with open('settings.ini', 'w') as configfile:
             config.write(configfile)
 
+# labels/cl_labels contains the sample labels for each sample present (different for each client)
+# alt_labels/alt_cl_labels contains alternate names for each sample label
 labels = []
 alt_labels = []
-labels_sub = [] # First three letters of each sample name (for sorting)
 
 cl_labels = []
 alt_cl_labels = []
-cl_labels_sub = []
 
 try:
+    # attempts to load labels/alt labels from the config file
     for key in config['CT Labels']:
         labels.append(key)
-        labels_sub.append(key[:3].lower())
+        
+        # alternate labels are contained in the same string with '/' in between,
+        # so split string on '/' to get individual alt labels
         temp = config['CT Labels'][key].split('/')
         alt_labels.append(temp)
             
     for key in config['CL Labels']:
         cl_labels.append(key)
-        cl_labels_sub.append(key[:3].lower())
         temp = config['CL Labels'][key].split('/')
-        alt_cl_labels.append(temp)
-        
+        alt_cl_labels.append(temp)      
 except:
     pass
 
-ACdir = dirname
+# Sorts the labels/alternate labels according to the first 3 letters each element
+# This keeps a similar ordering to these, regardless of how additional labels are
+# added to it.
+    
 labels = sorted(labels, key = lambda x: x[:3].lower())
-labels_sub = sorted(labels_sub, key = lambda x: x[:3].lower())
 alt_labels = sorted(alt_labels, key = lambda x: x[0][:3].lower()) 
 cl_labels = sorted(cl_labels, key = lambda x: x[:3].lower())  
-cl_labels_sub = sorted(cl_labels_sub, key = lambda x: x[:3].lower())
 alt_cl_labels = sorted(alt_cl_labels, key = lambda x: x[0][:3].lower())
 
-try:
-    onlyfilesAC = [f for f in listdir(ACdir) if isfile(join(ACdir, f))] # List of files present in directory
-    onlyfilesAC = [i for i in onlyfilesAC if 'xlsx' in i[-4:]] # grabs list of files present in directory that are excel worksheets
-except:
-    root = tk.Tk()
-    root.withdraw()
-    messagebox.showinfo('Air Canada Trends', 'Error loading files. Please re-select the folder that contains the excel report files.')
-    dirname = askdirectory(parent=root,initialdir="/",title='Please select a directory')+'/'
-    root.destroy()
-    if dirname != '/':
-        config = configparser.RawConfigParser()
-        config.optionxform = str 
-        config.set('Directory', 'Location', dirname)
-        with open('settings.ini', 'w') as configfile:
-            config.write(configfile)
-    onlyfilesAC = [f for f in listdir(ACdir) if isfile(join(ACdir, f))] # List of files present in directory
-    onlyfilesAC = [i for i in onlyfilesAC if 'xlsx' in i[-4:]] # grabs list of files present in directory that are excel worksheets
+# Boolean value to indicate the files have not been loaded
+loaded = False
+
+while not loaded:
+    try:
+        # Try to load the files given the directory name currently
+        onlyfilesAC = [f for f in listdir(dirname) if isfile(join(dirname, f))] # List of files present in directory
+        onlyfilesAC = [i for i in onlyfilesAC if 'xlsx' in i[-4:] and '(' and ')' not in i] # grabs list of files present in directory that are excel worksheets
+        loaded = True
+    except:
+        # If fail loading, the directory name must be wrong - get a new one
+        root = tk.Tk()
+        root.withdraw()
+        messagebox.showinfo('Air Canada Trends', 'Error loading files. Please re-select the folder that contains the excel report files.')
+        dirname = askdirectory(parent=root,initialdir="/",title='Please select a directory')+'/'
+        root.destroy()
+        if dirname != '/':
+            config = configparser.RawConfigParser()
+            config.optionxform = str 
+            config.set('Directory', 'Location', dirname)
+            with open('settings.ini', 'w') as configfile:
+                config.write(configfile)
+        try:
+            onlyfilesAC = [f for f in listdir(dirname) if isfile(join(dirname, f))] # List of files present in directory
+            onlyfilesAC = [i for i in onlyfilesAC if 'xlsx' in i[-4:] and '(' and ')' not in i] # grabs list of files present in directory that are excel worksheets, and not duplicates
+            loaded = True
+        except:
+            # if this occurs, it has stilled failed at loading the files, so repeat the loop
+            pass
 
 
 #----------------------------------------------------------------------
+#                       SECTION: DATA ACQUISITION
 
 # This function simply loads the first sheet of an excel file, of which
 # one may pull specific columns or rows.
@@ -111,12 +137,10 @@ def open_file(path):
 
 # Creates a list of the loaded excel files from the directory, opening the
 # first sheet of each file.
-
 AClist = []
 for i in range(len(onlyfilesAC)):
-    AClist.append(open_file(ACdir + onlyfilesAC[i]))
-    
-#----------------------------------------------------------------------
+    AClist.append(open_file(dirname + onlyfilesAC[i]))
+
     
 # This function takes a open sheet ('file') and parses through the sheet,
 # pulling the data from the worksheet and organizing it into 4 lists:
@@ -130,12 +154,14 @@ for i in range(len(onlyfilesAC)):
 #    to CTdata
 
 def pulldata(file):
-    global labels, labels_sub, cl_labels, cl_labels_sub
-    labels_loc = []    # List to contain sample names in file
-    labels_loc_3 = []  # List to contain first three letters of sample names (for sorting)
-    cl_labels_loc = []
-    cl_labels_loc_3 = []     
+    global labels, cl_labels
     
+    # These lists will contain local labels (from the file)
+    labels_loc = []
+    cl_labels_loc = []   
+    
+    # Empty dict/lists to hold data, initially held in data, then distributed to
+    # CT/CL based upon table headers
     data = {}
     
     CTdata = []
@@ -143,10 +169,15 @@ def pulldata(file):
     CTvariables = []
     CLvariables = []
     
-    ct_tests = ['tds', 'orp', 'cond', 'fe', 'cu', 'mg', 'ca', 'fatp', 'f', 't', 'tatp', 'zn', 'm. alk', 'm alk']
-    cl_tests = ['tds', 'cond', 'fe', 'cu', 'nit', 'nitrite', 'mo', 'molybdenum']
+    # listing of ct test and cl test names (all possible labels for each test)
+    # which is used to tell if a particular data table is for CTs or CL samples (based on table headers)
+    ct_tests = ['tds', 'orp', 'cond', 'fe', 'cu', 'mg', 'ca', 'fatp', 'f', 't', 'tatp', 'zn', 'm. alk', 'm alk', 'conductivity']
+    cl_tests = ['tds', 'cond', 'fe', 'cu', 'nit', 'nitrite', 'mo', 'molybdenum', 'conductivity']
     
-    try:
+    
+    # this try/except parses through the file rows, checking to see if they contain
+    # useful data, and those that do, append to data
+    try: 
         for i in range(100):
             temp = []
             x = file.row_values(i)
@@ -166,19 +197,16 @@ def pulldata(file):
             data['data{0}'.format(len(data))] = temp
         pass
     
-    
-#    for i in range(len(data)):
-#        if labels_loc_3[i] in labels_sub:
-#            CTdata.append(data[i])
-#        else:
-#            CLdata.append(data[i])
-#            
+    # This looks to see if any of the data tables contained in data is just an extension of another
+    # If so, it stitches the data from the two tables together
     for i in range(len(data)):
         try:
             temp_list = data['data{0}'.format(i)][1:]
             temp_list2 = data['data{0}'.format(i+1)][1:]
             labels_list = [item[0][:3].lower() for item in temp_list]
             labels_list2 = [item[0][:3].lower() for item in temp_list2]
+            
+            # Checking to see if the labels in each table match up (in same order)
             if set(labels_list) == set(labels_list2):
                 temp = []
                 temp.append(list(np.concatenate((data['data{0}'.format(i)][0],data['data{0}'.format(i+1)][0][1:]))))
@@ -189,19 +217,45 @@ def pulldata(file):
             
           
         except KeyError:
-            pass               
+            pass         
+    
+    # This loop goes through each data table in data, checking to see if it should
+    # be considered a CT/CL table, and aggregates each type of data in CTdata/CLdata/CTvariables/CLvariables
     for i in range(len(data)+1):
         try:
             temp_list = data['data{0}'.format(i)][1:]
             temp_variables = data['data{0}'.format(i)][0]
+            
+            # creates two lists, one containing all table headers that are in ct_tests,
+            # and all in cl_tables
             temp_ct_var = [i for i in temp_variables if i.lower() in ct_tests]
             temp_cl_var = [i for i in temp_variables if i.lower() in cl_tests]
+            
+            # labels in the data table
             labels_list_3 = [item[0][:3].lower() for item in temp_list]
             labels_list = [item[0] for item in temp_list]
+            
+            # This occurs when it can't tell where it should belong. In this case,
+            # we look at where the most labels match up
+            if len(temp_ct_var) == len(temp_cl_var):
+                print('equal case occurred')
+                full_label_list_ct = labels  + [item for sublist in alt_labels for item in sublist]
+                full_label_list_cl = cl_labels  + [item for sublist in alt_cl_labels for item in sublist]
+                temp_ct_labels = [item for item in labels_list if item in full_label_list_ct]
+                temp_cl_labels = [item for item in labels_list if item in full_label_list_cl]
+                if len(temp_ct_labels) > len(temp_cl_labels):
+                    temp_ct_var.append('')
+                elif len(temp_cl_labels) > len(temp_ct_labels):
+                    temp_cl_var.append('')
+            
+            # if there are mostly 'ct' test labels in the table header, assign data to CT lists
             if len(temp_ct_var) > len(temp_cl_var):
                 if len(CTvariables) == 0:
                     CTvariables = data['data{0}'.format(i)][0]
                 else:
+                    # Check if another CT table has test names not present in first, and add to first
+                    # table's variables + place '' on each data contained in first table, to represent that
+                    # we had no data for that test
                     missing_tests = np.setdiff1d(data['data{0}'.format(i)][0], CTvariables)[0]
                     variables2 = data['data{0}'.format(i)][0]
                     data2 = temp_list
@@ -210,7 +264,10 @@ def pulldata(file):
                             CTvariables.append(missing_tests[t])
                             for v in range(len(CTdata)):
                                 CTdata[v].append('')
-                    for l in range(5):
+                                
+                    # If two CT tables, but have different sample labels in them,
+                    # shift data in second table to match with headings in first table
+                    for l in range(10):
                         for o in range(len(CTvariables)):
                             if variables2[o] != CTvariables[o]:
                                 ind_sort = np.where(np.array(CTvariables) == variables2[o])[0]
@@ -227,18 +284,22 @@ def pulldata(file):
                                     for v in range(len(data2)):
                                         data2[v][o], data2[v][ind_sort[0]] = data2[v][ind_sort[0]], data2[v][o]
                     temp_list = data2
+                    
+                # Make labels present in labels_list from current data table as labels_loc if not defined currently,
+                # and if it is already defined, then check to see if the current table has additional samples in it or not
+                # and add additional samples to labels_loc if present
                 if len(labels_loc) == 0:
                     labels_loc = labels_list
-                    labels_loc_3 = labels_list_3
                 else:
                     missing_samples=[el for el in labels_list_3 if el not in labels_loc]
                     if len(missing_samples) != 0:
                         for t in range(len(missing_samples)):
                             ind_temp = np.where(np.array(labels_list_3) == missing_samples[t])[0][0]
                             labels_loc.append(labels_list[ind_temp])
-                            labels_loc_3.append(labels_list[ind_temp][:3].lower())
                 for item in temp_list:
                     CTdata.append(item)
+                    
+             # if there are mostly 'cl' test labels in the table header, assign data to CL lists
             if len(temp_cl_var) > len(temp_ct_var):
                 for item in temp_list:
                     CLdata.append(item)
@@ -253,19 +314,26 @@ def pulldata(file):
                                 CLdata[v].append('')
                 if len(cl_labels_loc) == 0:
                     cl_labels_loc = labels_list
-                    cl_labels_loc_3 = labels_list_3
                 else:
                     missing_samples = np.setdiff1d(labels_list_3, cl_labels_loc)
                     if len(missing_samples) != 0:
                         for t in range(len(missing_samples)):
                             ind_temp = np.where(np.array(labels_list_3) == missing_samples[t])[0][0]
                             cl_labels_loc.append(labels_list[ind_temp])
-                            cl_labels_loc_3.append(missing_samples[t])
+                          
         except KeyError:
             pass
+       
+    # This checks the CT labels present in the file (labels_loc for CTs) match up with
+    # those set in labels, which houses all sample labels. If a sample isn't present currently,
+    # add an empty list with that label to CTdata. If a sample is present, but currently has
+    # the incorrect label, match it to labels or alt_labels and replace the name with the label
+    # listed in labels. Also delete any samples that aren't close to anything listed in labels
+    # (usually this is random strings found in the file, such as recommendations, etc.)
     if len(labels) != 0: 
         if set(labels) != set(labels_loc):
             full_label_list = labels  + [item for sublist in alt_labels for item in sublist]
+            ind_dele = []
             for i in range(len(labels_loc)):
                 try:
                     result = get_close_matches(labels_loc[i], full_label_list)[0]
@@ -276,7 +344,12 @@ def pulldata(file):
                     labels_loc[i] = result
                     CTdata[i][0] = result
                 except:
-                    print(labels_loc[i])
+                    ind_dele.append(i)
+                    pass
+                    #print(labels_loc[i])
+            for item in sorted(ind_dele, reverse=True):
+                del CTdata[item]
+                del labels_loc[item]
             if set(labels) != (labels_loc):
                 missing_samples = [i for i in labels if i not in labels_loc]
                 for i in range(len(missing_samples)):
@@ -288,15 +361,18 @@ def pulldata(file):
                     labels_loc.append(missing_samples[i])
                     CTdata.append(fill)
     
+    # Sort CTdata before returning (standardizes order of samples in CTdata)
     together = zip(labels_loc, CTdata)
     sorted_together =  sorted(together, key=lambda x: x[0].lower())     
     labels_loc = [x[0] for x in sorted_together]
     CTdata = [x[1] for x in sorted_together]
     
+    # Do the same for the CL samples loaded (as done for CT samples).
     if len(cl_labels) != 0: 
         if set(cl_labels) != set(cl_labels_loc):
             full_label_list = cl_labels  + [item for sublist in alt_cl_labels for item in sublist]
-            for i in range(len(labels_loc)):
+            ind_dele = []
+            for i in range(len(cl_labels_loc)):
                 try:
                     result = get_close_matches(cl_labels_loc[i], full_label_list)[0]
                     if result not in cl_labels:
@@ -306,8 +382,12 @@ def pulldata(file):
                     cl_labels_loc[i] = result
                     CLdata[i][0] = result
                 except:
+                    ind_dele.append(i)
                     pass
                     #print(cl_labels_loc[i])
+            for item in sorted(ind_dele, reverse=True):
+                del CLdata[item]
+                del cl_labels_loc[item]
             if set(cl_labels) != (cl_labels_loc):
                 missing_samples = [i for i in cl_labels if i not in cl_labels_loc]
                 if len(missing_samples) != 0:
@@ -319,46 +399,32 @@ def pulldata(file):
                         fill[0] = missing_samples[i]
                         cl_labels_loc.append(missing_samples[i])
                         CLdata.append(fill)
-#    if len(cl_labels_sub) != 0:
-#        if set(cl_labels) != set(cl_labels_loc):
-#            if set(cl_labels_sub) != set(cl_labels_loc_3):
-#                missing_samples = np.setdiff1d(cl_labels_sub,cl_labels_loc_3)
-#                for v in range(len(missing_samples)):
-#                    ind_lab = np.where(np.array(cl_labels_sub) == missing_samples[v])[0][0]
-#                    cl_labels_loc_3.append(missing_samples[v])
-#                    fill = ['' for x in range(len(CLvariables))]
-#                    fill[0] = cl_labels[ind_lab]
-#                    cl_labels_loc.append(cl_labels[ind_lab])
-#                    CLdata.append(fill)
-#                if set(cl_labels) != set(cl_labels_loc):
-#                    wrong_names = np.setdiff1d(cl_labels_loc, cl_labels)
-#                    diff_names = np.setdiff1d(cl_labels, cl_labels_loc)
-#                    for v in range(len(wrong_names)):
-#                        ind_lab = np.where(np.array(cl_labels_loc) == wrong_names[v])[0][0]
-#                        #CLdata = [i[0].replace(wrong_names[v], diff_names[v]) + i[1:] for i in CLdata]
-#                        CLdata[ind_lab][0] = diff_names[v]
-#                        cl_labels_loc[ind_lab] = diff_names[v]
-#            else:
-#                wrong_names = np.setdiff1d(cl_labels_loc, cl_labels)
-#                diff_names = np.setdiff1d(cl_labels, cl_labels_loc)
-#                for v in range(len(wrong_names)):
-#                    ind_lab = np.where(np.array(cl_labels_loc) == wrong_names[v])[0][0]
-#                    #CLdata = [i[0].replace(wrong_names[v], diff_names[v]) + i[1:] for i in CLdata]
-#                    CLdata[ind_lab][0] = diff_names[v]
-#                    cl_labels_loc[ind_lab] = diff_names[v]                 
+             
     together = zip(cl_labels_loc, CLdata)
     sorted_together =  sorted(together, key=lambda x: x[0].lower())     
     cl_labels_loc = [x[0] for x in sorted_together]
     CLdata = [x[1] for x in sorted_together]
-            
-        
-
 
     return CTvariables, CTdata, CLvariables, CLdata
 
-
-colors = ['#4285F4', '#FBBC05', '#34A853', '#EA4335', '#964f8e', '#33cccc']
-colors_alt = ['#b7d1fb', '#feebb4', '#c4edcf', '#f8bfba', '#e5cde2', '#c2f0f0']    
+#----------------------------------------------------------------------
+#                   SECTION: PLOT COLORS + FILE DATING
+    
+# Holds colors to be used in plotting the data
+colors = ['#4285F4', 
+          '#FBBC05', 
+          '#34A853', 
+          '#EA4335', 
+          '#964f8e', 
+          '#33cccc']
+ 
+# Holds alternate colors, for plotting certain tests (Phosphonate, Hardness)         
+colors_alt = ['#b7d1fb', 
+              '#feebb4', 
+              '#c4edcf', 
+              '#f8bfba', 
+              '#e5cde2', 
+              '#c2f0f0']    
         
 def tryinteger(s):
     try: 
@@ -372,9 +438,12 @@ def str_search(string, substring_list):
         if substring in string:
             return substring
     return False
-            
-def date(filename):  #filename is a string
-    long = ['January', 'Feburary', 'March', 'April', 'May', 'June', 'July',
+
+
+# Dates the files, giving a date value for each of the files based upon filename strings
+# (these are contained in onlyfilesAC)            
+def date(filename):
+    long = ['January', 'February', 'March', 'April', 'May', 'June', 'July',
             'August', 'September', 'October', 'November', 'December']
     short = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep',
              'Oct', 'Nov', 'Dec']
@@ -383,6 +452,8 @@ def date(filename):  #filename is a string
         return datestr
     elif 'Report' in filename:
         date_str = filename.split('Report')[1][:-5]
+        if 'sept' in date_str.lower():
+            date_str = 'Sep' + date_str[4:]
         ban = str_search(date_str, long)
         if not ban:
             datetime_object = datetime.strptime(date_str, '%b%d%Y')
@@ -396,6 +467,8 @@ def date(filename):  #filename is a string
         for i in range(len(short)):
             if short[i] in filename:
                 date_str = short[i] + filename.split(short[i])[1][:-5]
+                if 'sept' in date_str.lower():
+                    date_str = 'Sep' + date_str[4:]
                 ban = str_search(date_str, long)
                 if not ban:
                     datetime_object = datetime.strptime(date_str, '%b%d%Y')
@@ -405,26 +478,32 @@ def date(filename):  #filename is a string
                     datetime_object = datetime.strptime(date_str, '%b%d%Y')
                 datestr = datetime_object.strftime('%Y-%m-%d')
                 return datestr
-                
-                
-        
-
-dates = []
             
+# To hold all of the dates for plotting
+dates = []           
 for i in range(len(onlyfilesAC)):
     dates.append(date(onlyfilesAC[i]))
-date_temp = zip(dates, AClist)
+    
+# Sorting the files according to dates
+date_temp = zip(dates, AClist, onlyfilesAC)
 date_temp_sorted =  sorted(date_temp, key=lambda x: datetime.strptime(x[0], '%Y-%m-%d'))
-dates = [x[0] for x in date_temp_sorted]
 AClist = [x[1] for x in date_temp_sorted]
-dates_title = [dates[0], dates[len(dates)-1]]
+dates = [x[0] for x in date_temp_sorted]
+onlyfilesAC = [x[2] for x in date_temp_sorted]
+
+# Grabbing first and last dates, for labelling of the plots + output file with dates contained
+dates_title = [dates[0], dates[-1]]
 dates_title = [datetime.strptime(item, '%Y-%m-%d').strftime('%B %Y') for item in dates_title]
 
+#----------------------------------------------------------------------
+#                  SECTION: APP FUNCTIONS AND PLOTTING
+
+# Changes global variable 'dirname' to something else if changed
 def change_directory_variable(updated_variable):
     global dirname
     dirname = updated_variable
     
-
+# Function for app; launches submenu to change directory if listed 
 def change_directory():
     root = tk.Tk()
     root.withdraw()
@@ -437,6 +516,8 @@ def change_directory():
             config.write(configfile)
     change_directory_variable(dirname2)
 
+# To create menus to change around labels kept in settings.ini, as well as 
+# alternate names
 choice = None
 def change_samples(arg):
     global choice
@@ -448,6 +529,8 @@ def change_samples(arg):
 def on_exit(window):
     window.destroy()
     window.quit()
+    
+#----------------------------------------------------------------------
 
 def plotter(system, test):
     global labels, cl_labels
@@ -461,21 +544,6 @@ def plotter(system, test):
     keysnom = ('TDS', 'ORP', 'Cu', 'Zn', 'pH')
     
     if system == 'CT':
-#        labels = []
-#        labels_sub = []
-#        for i in range(len(AClist)):
-#            for v in range(100):
-#                x = AClist[i].cell(v,0)
-#                if x == 'Sample':
-#                    sample_ind = v
-#                    break
-#            for v in range(10):
-#                x = AClist[i].cell(sample_ind+v+1)
-#                if x.lower() not in ban3:
-#                    if x[:3].lower() not in labels_sub:
-#                        labels.append(x)
-#                        labels_sub.append(x[:3].lower())
-#                if x.lower() == 'target':
         labels_local = labels
         NCT = len(labels_local)
         
@@ -850,7 +918,8 @@ def plotter(system, test):
                     "type": "scatter",
                     "hoverinfo": "name+x+text",
                     'legendgroup': 'group{0}'.format(k),
-                    "line": {"width": 0.5}, 
+                    "line": {"width": 0.5,
+                             'dash':'dot'}, 
                     "marker": {"size": 8},
                     "mode": "lines+markers",
                     "showlegend": False
@@ -880,7 +949,7 @@ def plotter(system, test):
         y_title = 'Conductivity (μS)'
     
     layout = {
-      "dragmode": "zoom", 
+      "dragmode": "zoom",
     #  "hovermode": "x", 
     #  "legend": {"traceorder": "reversed"}, 
     #  "margin": {
@@ -943,7 +1012,10 @@ def plotter(system, test):
       }
     }
     fig = go.Figure(data=data, layout=layout)
-    py2.offline.plot(fig, auto_open=True, filename='Trend ({} - {}).html'.format(dates_title[0], dates_title[1]), image_filename='Trend')
+    config_plot = {'showLink': False,
+                   'modeBarButtonsToRemove': ['sendDataToCloud','lasso2d', 'select2d'],
+                   'displaylogo': False}
+    py2.offline.plot(fig, config =config_plot,auto_open=True, filename='Trend ({} - {}).html'.format(dates_title[0], dates_title[1]), image_filename='Trend')
 
 class app():
     def __init__(self):
@@ -958,11 +1030,8 @@ class app():
         self.window.protocol("WM_DELETE_WINDOW", lambda: on_exit(self.window))
 
     def create_widgets(self):
-        # Create some room around all the internal frames
 
-        # - - - - - - - - - - - - - - - - - - - - -
         # The Commands frame
-        # cmd_frame = ttk.LabelFrame(self.window, text="Commands", padx=5, pady=5, relief=tk.RIDGE)
         cmd_frame = ttk.LabelFrame(self.window, text="CT Tests", relief=tk.RIDGE)
         cmd_frame.grid(row=1, column=1, sticky=tk.E + tk.W + tk.N + tk.S)
         button1 = ttk.Button(cmd_frame,
@@ -1056,10 +1125,11 @@ class app():
         menubar = tk.Menu(self.window)
 
         filemenu = tk.Menu(menubar, tearoff=0)
-        filemenu.add_command(label="Exit", command=lambda: on_exit(self.window))
         filemenu.add_command(label = 'Change file directory', command=change_directory)
         filemenu.add_command(label = 'Change CT sample entries', command =lambda: change_samples('ct'))
         filemenu.add_command(label = 'Change CL sample entries', command =lambda: change_samples('cl'))
+        filemenu.add_separator()
+        filemenu.add_command(label="Exit", command=lambda: on_exit(self.window))
         menubar.add_cascade(label="File", menu=filemenu)
 
         self.window.config(menu=menubar)
@@ -1126,7 +1196,7 @@ class listbox():
         scrollbarV.config(command=self.samplenames.yview)
         
         def save_list():
-            global labels, labels_sub, cl_labels, cl_labels_sub, alt_labels, alt_cl_labels
+            global labels, cl_labels, alt_labels, alt_cl_labels
             # get a list of listbox lines
             temp_list1 = list(self.samplenames.get(0, tk.END))
             temp_list2 = list(self.samplealtnames.get(0, tk.END))
@@ -1135,7 +1205,6 @@ class listbox():
                 alt_labels.pop(index_selected)
                 alt_labels.append(temp_list2)
                 alt_labels = sorted(alt_labels, key = lambda x: x[0][:3].lower())
-                labels_sub = [item[:3].lower() for item in labels]
                 for i in range(len(labels)):
                     config.set('CT Labels', labels[i], alt_labels[i])
                 with open('settings.ini', 'w') as configfile:
@@ -1145,7 +1214,6 @@ class listbox():
                 alt_cl_labels.pop(index_selected)
                 alt_cl_labels.append(temp_list2)
                 alt_cl_labels = sorted(alt_cl_labels, key = lambda x: x[0][:3].lower())
-                labels_sub = [item[:3].lower() for item in labels]
                 for i in range(len(cl_labels)):
                     config.set('CL Labels', cl_labels[i], alt_cl_labels[i])
                 with open('settings.ini', 'w') as configfile:
