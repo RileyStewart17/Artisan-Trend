@@ -559,27 +559,42 @@ def plotter(system, test):
         # NCT = number of CT samples present
         NCT = len(labels_local)
         
+        # iterate thru each file
         for t in range(len(AClist)):
+            # load the main data + define variables
             file_data = pulldata(AClist[t])
             variables = np.array(file_data[0])
             
+            # if keyword 'test' is a test with a standard label
             if test in keysnom:
                 name = test
+                
+                # iterate thru each CT sample
                 for i in range(NCT):
+                    # update datadict to be filled with empty lists (to start)
                     if len(datadict) == 0:
                         datadict['data{0}'.format(i)] = []
+                        
                     try:
                         d1 = file_data[1][i]
                         ind = np.where(variables == test.lower())[0][0]
+                        
+                        # u1 represents the value for a particular sample, particular file
                         u1 = str(d1[ind])
+                        
+                        # if u1 in the list of banned strings, modify it
                         if u1 in ban:
                             u1 = np.nan
                         elif u1[0] in ban2:
                             u1 = u1[1:]
                             if u1[-1] in ban2:
                                 u1 = u1[:-1]
+                                
+                        # append value if you can, and it can be made into a number (float)
                         datadict.setdefault('data{0}'.format(i), []).append(float(u1))
                     except IndexError:
+                        
+                        # if value cannot be turned into a number, append np.nan
                         datadict.setdefault('data{0}'.format(i), []).append(np.nan)
                         pass
             
@@ -874,9 +889,13 @@ def plotter(system, test):
 
     data_sets = []
     data_sets2 = []
+    
+    # Now that the data has been gathered, setup plotting + labels for each point
     for c in range(NCT):
+        # empt/empt2 hold the text that appear when a point is hovered over
         empt = []
         empt2 = []
+        
         for i in range(len(datadict['data{0}'.format(c)])):
             #entry = dates[i] + '  ' + name + ': ' + str(datadict['data{0}'.format(c)][i])
             entry = name + ': ' + str(datadict['data{0}'.format(c)][i])
@@ -890,7 +909,9 @@ def plotter(system, test):
         #axis_num = 'y'
         #if c > 0:
         #    axis_num = 'y' + str(c+1)
-            
+           
+        # trace holds an object (go.scatter) with specific entries (x values, y values,
+        # name, text on hover, etc.) that will be plotted later
         trace = go.Scatter(
              x = dates, 
             y = datadict['data{0}'.format(c)], 
@@ -918,7 +939,8 @@ def plotter(system, test):
             data_sets2.append(trace2)
     
     data = go.Data(data_sets)
-        # style all the traces
+    
+    # style all the traces using update
     for k in range(len(data)):
         data[k].update(
             {
@@ -948,9 +970,13 @@ def plotter(system, test):
                 }
             )
         data = data + data2
+        
+    # title that incldue start + end date
     title = name + ' ({} - {})'.format(dates_title[0], dates_title[1])
     if len(datadict2) != 0:
         title = name + ' & ' + name2+ ' ({} - {})'.format(dates_title[0], dates_title[1])
+        
+    # for each test, the units are different, so the y-axis label is define based upon the test
     if test.lower() in ('tds', 'cltds'):
         y_title = 'TDS (ppm)'
     if test.lower() in ('cu', 'fe', 'cl', 'zn', 'po4', 'nitrite', 'malk', 'hardness', 'clcu', 'clfe'):
@@ -970,6 +996,7 @@ def plotter(system, test):
     if test.lower() == 'cond':
         y_title = 'Conductivity (μS)'
     
+    # layout is an object/dictionary that holds options for plotting, custom buttons, etc.
     layout = {
       "dragmode": "zoom",
     #  "hovermode": "x", 
@@ -1033,12 +1060,22 @@ def plotter(system, test):
         "zeroline": False
       }
     }
+    
+    # plot the data
     fig = go.Figure(data=data, layout=layout)
     config_plot = {'showLink': False,
                    'modeBarButtonsToRemove': ['sendDataToCloud','lasso2d', 'select2d'],
                    'displaylogo': False}
     py2.offline.plot(fig, config =config_plot,auto_open=True, filename='Trend ({} - {}).html'.format(dates_title[0], dates_title[1]), image_filename='Trend')
 
+#----------------------------------------------------------------------
+#                       SECTION: APPLICATION
+    
+# This section contains code for the application side of the script. Setting up the main
+# menu, buttons, names of the windows, etc. It also contains the application window
+# for the updating of sample names.
+
+# main application window with test buttons
 class app():
     def __init__(self):
         self.window = tk.Tk()
@@ -1053,45 +1090,36 @@ class app():
 
     def create_widgets(self):
 
-        # The Commands frame
+        # The CT sample frame
         cmd_frame = ttk.LabelFrame(self.window, text="CT Tests", relief=tk.RIDGE)
         cmd_frame.grid(row=1, column=1, sticky=tk.E + tk.W + tk.N + tk.S)
         button1 = ttk.Button(cmd_frame,
                          text="TDS",
                          command=lambda: plotter('CT', 'TDS'))  
-        #    button1.pack(side=LEFT)
         button2 = ttk.Button(cmd_frame,
                                  text="ORP",
                                  command= lambda: plotter('CT','ORP'))
-        #    button2.pack(side=LEFT)
         button3 = ttk.Button(cmd_frame,
                                  text="pH",
                                  command=lambda: plotter('CT','pH'))  
-        #    button3.pack(side=LEFT)
         button10 = ttk.Button(cmd_frame,
                                  text="M. Alk",
                                  command=lambda: plotter('CT','malk'))  
-        #    button10.pack(side=LEFT)
         button4 = ttk.Button(cmd_frame,
                                  text="PO4 & PhO4",
                                  command=lambda: plotter('CT','po4')) 
-        #    button4.pack(side=LEFT)
         button5 = ttk.Button(cmd_frame,
                                  text="Chlorine",
                                  command=lambda: plotter('CT','cl'))  
-        #    button5.pack(side=LEFT)
         button6 = ttk.Button(cmd_frame,
                                  text="Fe/Iron",
                                  command=lambda: plotter('CT','fe'))  
-        #    button6.pack(side=LEFT)
         button7 = ttk.Button(cmd_frame,
                                  text="Cu/Copper",
                                  command=lambda: plotter('CT','Cu'))  
-        #    button7.pack(side=LEFT)
         button8 = ttk.Button(cmd_frame,
                                  text="Hardness",
                                  command=lambda: plotter('CT','Hardness'))  
-        #    button8.pack(side=LEFT)
         button9 = ttk.Button(cmd_frame,
                                  text="Zn/Zinc",
                                  command=lambda: plotter('CT','Zn'))   
@@ -1115,8 +1143,8 @@ class app():
         button15.grid(row=1, column=4, columnspan=1, sticky=tk.E + tk.W + tk.N + tk.S)
         button10.grid(row=1, column=5, columnspan=1, sticky=tk.E + tk.W + tk.N + tk.S)
 
-        # - - - - - - - - - - - - - - - - - - - - -
-        # The Data entry frame
+        #---------------------------------------------------------------------
+        # The CL test frame
         entry_frame = ttk.LabelFrame(self.window, text="CL Tests",
                                      relief=tk.RIDGE)
         entry_frame.grid(row=2, column=1, sticky=tk.E + tk.W + tk.N + tk.S)
@@ -1142,8 +1170,8 @@ class app():
         button16.grid(row=0, column=3, columnspan=1, sticky=tk.E + tk.W + tk.N + tk.S)
         button17.grid(row=0, column=4, columnspan=1, sticky=tk.E + tk.W + tk.N + tk.S)
 
-        # - - - - - - - - - - - - - - - - - - - - -
-        # Menus
+        #---------------------------------------------------------------------
+        # Menus + dropdown menus
         menubar = tk.Menu(self.window)
 
         filemenu = tk.Menu(menubar, tearoff=0)
@@ -1156,9 +1184,9 @@ class app():
 
         self.window.config(menu=menubar)
 
-        # - - - - - - - - - - - - - - - - - - - - -
+        #---------------------------------------------------------------------
 
-
+# listbox holds the menu for change around sample names + altername labels
 class listbox():
     def __init__(self):
         self.window = tk.Tk()
@@ -1170,7 +1198,7 @@ class listbox():
         self.window.protocol("WM_DELETE_WINDOW", lambda: on_exit(self.window))
         
     def InitResizing(self):
-        """Initialize the Resizing of the Window"""
+        # resizing of the window
         top=self.window.winfo_toplevel()
         top.rowconfigure(0, weight=1)
         top.columnconfigure(0, weight=1)
@@ -1180,21 +1208,24 @@ class listbox():
         self.window.columnconfigure(6, weight=1)
        
     def CreateWidgets(self):
-        """Create all the widgests that we need"""
-                       
-        """Create the Text"""
+        
+        # labels for each box
         box1Text = ttk.LabelFrame(self.window, text="Sample Labels:")
         box1Text.grid(row=0, column=0, sticky=tk.W+ tk.N)
         box2Text = ttk.LabelFrame(self.window, text="Alternative Sample Names:")
         box2Text.grid(row=0, column=6, sticky=tk.W+ tk.N)
         
-        """Create the First ListBox"""
+        #---------------------------------------------------------------------
+        # first listbox, holding sample labels
         scrollbarV = tk.Scrollbar(box1Text, orient=tk.VERTICAL)
         
         self.samplenames = tk.Listbox(box1Text, selectmode=tk.BROWSE
                                 , yscrollcommand=scrollbarV.set
                                 , relief=tk.SUNKEN)
         self.samplenames.grid(row=1, column=0, columnspan=4, sticky=tk.N+tk.W+tk.S+tk.E)
+        
+        #---------------------------------------------------------------------
+        # function to change what alternate names are displayed when a sample label is selected
         def onselect(evt):
             global index_selected
             # Note here that Tkinter passes an event object to onselect()
@@ -1213,10 +1244,15 @@ class listbox():
                     self.samplealtnames.insert(tk.END, item)
         
         self.samplenames.bind('<<ListboxSelect>>', onselect)
-        """Show the scrollbars and attatch them"""
+        
+        #---------------------------------------------------------------------
+        # scroll bar for first listbox
         scrollbarV.grid(row=1, column=4, sticky=tk.N+tk.S)
         scrollbarV.config(command=self.samplenames.yview)
         
+        #---------------------------------------------------------------------
+        # Functions to save labels + altername labels when changed, add items to listbox,
+        # and delete selected.
         def save_list():
             global labels, cl_labels, alt_labels, alt_cl_labels
             # get a list of listbox lines
@@ -1252,28 +1288,32 @@ class listbox():
                 args[0].delete(index)
             except IndexError:
                 pass
+            
+        #---------------------------------------------------------------------
+        # frame for buttons underneath first listbox, add buttons
         entry_frame = ttk.LabelFrame(self.window,labelwidget = box1Text,
                                      relief=tk.RIDGE)
         entry_frame.grid(row=3, column=0, sticky=tk.E + tk.W+ tk.N + tk.S)
-        """Create the Add, Remove, Edit, and View Buttons"""
         self.btnAdd = tk.Button(entry_frame, text="+", command = lambda: add_item(self.samplenames))
         self.btnAdd.grid(column=1, row=3, stick=tk.E, pady=5)
         self.btnRemove = tk.Button(entry_frame, text="-", command = lambda: delete_item(self.samplenames))
         self.btnRemove.grid(column=2, row=3, stick=tk.E, pady=5)
         
-        """Create a frame for space between the two items"""
-        
-        """Create the Second ListBox"""
+        #---------------------------------------------------------------------
+        # Second scrollbar for second listbox
         scrollbarV = tk.Scrollbar(box2Text, orient=tk.VERTICAL)
 
-        
+        #---------------------------------------------------------------------
+        # create second listbox to hold alternate names for each sample
         self.samplealtnames = tk.Listbox(box2Text, selectmode=tk.BROWSE
                                 , yscrollcommand=scrollbarV.set
                                 , relief=tk.SUNKEN)
         self.samplealtnames.grid(row=1, column=6, sticky=tk.N+tk.W+tk.S+tk.E)
-        """Show the scrollbars and attatch them"""
         scrollbarV.grid(row=1, column=7, sticky=tk.N+tk.S)
         scrollbarV.config(command=self.samplealtnames.yview)
+        
+        #---------------------------------------------------------------------
+        # frame for text entry + save
         entry_frame3 = ttk.Frame(self.window,#labelwidget = box2Text,
                                      relief=tk.FLAT)
         entry_frame3.grid(row=4, column=0, columnspan=8,sticky=tk.E + tk.W + tk.S)
@@ -1283,21 +1323,19 @@ class listbox():
         text_label.grid(row=4, column=0, sticky=tk.W)
         self.btnEdit = tk.Button(entry_frame3, text="Save", command=save_list)
         self.btnEdit.grid(row=4,column=10, stick=tk.E)
-               
-        """Create the Set TextButton"""
+        
+        #---------------------------------------------------------------------
+        # frame for buttons underneath second listbox, add buttons
         entry_frame2 = ttk.LabelFrame(self.window,labelwidget = box2Text,
                                      relief=tk.RIDGE)
         entry_frame2.grid(row=3, column=6, columnspan = 4, sticky=tk.E + tk.W+ tk.N + tk.S)
-        """Create the Add, Remove, Edit, and View Buttons"""
         self.btnAdd = tk.Button(entry_frame2, text="+", command = lambda: add_item(self.samplealtnames))
         self.btnAdd.grid(column=20, row=3, stick=tk.E, pady=5)
         self.btnRemove = tk.Button(entry_frame2, text="-", command = lambda: delete_item(self.samplealtnames))
         self.btnRemove.grid(column=10, row=3, stick=tk.E, pady=5)
-        
-        
-        """Just fill up the listbox with some numbers"""
-        
 
+        #---------------------------------------------------------------------
+        # fill first listbox with sample names
         if self.args == 'ct':
             for item in labels:
                 self.samplenames.insert(tk.END, item)
@@ -1307,8 +1345,6 @@ class listbox():
 
 # Create the entire GUI program
 program = app()
-
-
 
 # Start the GUI event loop
 program.window.mainloop()
