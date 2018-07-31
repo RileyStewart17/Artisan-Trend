@@ -550,7 +550,7 @@ def plotter(system, test):
     ban = ('', 'system drained', '-', 'drained', 'drained for winter')
     ban2 = ('>', '<')
     
-    # 'Normal' tests which don't seem to change in labelling (thankfully)
+    # 'Normal' tests which don't seem to change in labelling
     keysnom = ('TDS', 'ORP', 'Cu', 'Zn', 'pH')
     
     if system == 'CT':
@@ -559,16 +559,18 @@ def plotter(system, test):
         # NCT = number of CT samples present
         NCT = len(labels_local)
         
-        for i in range(NCT):
-            data = []
-            data2 = []
-
+        for t in range(len(AClist)):
+            file_data = pulldata(AClist[t])
+            variables = np.array(file_data[0])
+            
             if test in keysnom:
                 name = test
-                for t in range(len(AClist)):  
+                for i in range(NCT):
+                    if len(datadict) == 0:
+                        datadict['data{0}'.format(i)] = []
                     try:
-                        d1 = pulldata(AClist[t])[1][i]
-                        ind = np.where(np.array(pulldata(AClist[t])[0]) == test.lower())[0][0]
+                        d1 = file_data[1][i]
+                        ind = np.where(variables == test.lower())[0][0]
                         u1 = str(d1[ind])
                         if u1 in ban:
                             u1 = np.nan
@@ -576,35 +578,19 @@ def plotter(system, test):
                             u1 = u1[1:]
                             if u1[-1] in ban2:
                                 u1 = u1[:-1]
-                        data.append(float(u1))
+                        datadict.setdefault('data{0}'.format(i), []).append(float(u1))
                     except IndexError:
-                        data.append(np.nan)
-                        pass
-        
-            if test.lower() == 'cl':
-                name = 'Cl'
-                for t in range(len(AClist)):
-                    try:
-                        d1 = pulldata(AClist[t])[1][i]
-                        ind = np.where((np.array(pulldata(AClist[t])[0]) == 'free Cl') | (np.array(pulldata(AClist[t])[0]) == 'cl') | (np.array(pulldata(AClist[t])[0]) == 'fcl'))[0][0]
-                        u1 = str(d1[ind])
-                        if u1 in ban:
-                            u1 = np.nan
-                        elif u1[0] in ban2:
-                            u1 = u1[1:]
-                            if u1[-1] in ban2:
-                                u1 = u1[:-1]
-                        data.append(float(u1))
-                    except:
-                        data.append(np.nan)
+                        datadict.setdefault('data{0}'.format(i), []).append(np.nan)
                         pass
             
-            if test.lower() == 'malk':
-                name = 'M. Alk'
-                for t in range(len(AClist)):
+            if test.lower() == 'cl':
+                name = 'Cl'
+                for i in range(NCT):
+                    if len(datadict) == 0:
+                        datadict['data{0}'.format(i)] = []
                     try:
-                        d1 = pulldata(AClist[t])[1][i]
-                        ind = np.where((np.array(pulldata(AClist[t])[0]) == 'm. alk') | (np.array(pulldata(AClist[t])[0]) == 'alkalinity') | (np.array(pulldata(AClist[t])[0]) == 'alk.') | (np.array(pulldata(AClist[t])[0]) == 'a.alk'))[0][0]
+                        d1 = file_data[1][i]
+                        ind = np.where((variables == 'free Cl') | (variables == 'cl') | (variables == 'fcl'))[0][0]
                         u1 = str(d1[ind])
                         if u1 in ban:
                             u1 = np.nan
@@ -612,18 +598,40 @@ def plotter(system, test):
                             u1 = u1[1:]
                             if u1[-1] in ban2:
                                 u1 = u1[:-1]
-                        data.append(float(u1))
-                    except:
-                        data.append(np.nan)
+                        datadict.setdefault('data{0}'.format(i), []).append(float(u1))
+                    except IndexError:
+                        datadict.setdefault('data{0}'.format(i), []).append(np.nan)
+                        pass
+                    
+            if test.lower() == 'malk':
+                name = 'M. Alk'
+                for i in range(NCT):
+                    if len(datadict) == 0:
+                        datadict['data{0}'.format(i)] = []
+                    try:
+                        d1 = file_data[1][i]
+                        ind = np.where((variables == 'm. alk') | (variables == 'alkalinity') | (variables == 'alk.') | (variables == 'm.alk'))[0][0]
+                        u1 = str(d1[ind])
+                        if u1 in ban:
+                            u1 = np.nan
+                        elif u1[0] in ban2:
+                            u1 = u1[1:]
+                            if u1[-1] in ban2:
+                                u1 = u1[:-1]
+                        datadict.setdefault('data{0}'.format(i), []).append(float(u1))
+                    except IndexError:
+                        datadict.setdefault('data{0}'.format(i), []).append(np.nan)
                         pass
             
             if test.lower() in ('po4', 'phosphate', 'pho4', 'orthophosphate'):
                 name = 'PO4'
                 name2 = 'PhO4'
-                for t in range(len(AClist)):
+                for i in range(NCT):
+                    if len(datadict) == 0:
+                        datadict['data{0}'.format(i)] = []
                     try:
-                        d1 = pulldata(AClist[t])[1][i]
-                        ind = np.where(np.array(pulldata(AClist[t])[0]) == 'po4')[0][0]
+                        d1 = file_data[1][i]
+                        ind = np.where(variables == 'po4')[0][0]
                         u1 = str(d1[ind])
                         if u1 in ban:
                             u1 = np.nan
@@ -631,31 +639,34 @@ def plotter(system, test):
                             u1 = u1[1:]
                             if u1[-1] in ban2:
                                 u1 = u1[:-1]
-                        data.append(float(u1))
-                    except:
-                        data.append(np.nan)
+                        datadict.setdefault('data{0}'.format(i), []).append(float(u1))
+                    except IndexError:
+                        datadict.setdefault('data{0}'.format(i), []).append(np.nan)
                         pass
+                    if len(datadict2) == 0:
+                        datadict2['data{0}'.format(i)] = []
                     try:
-                        d2 = pulldata(AClist[t])[1][i]
-                        ind = np.where(np.array(pulldata(AClist[t])[0]) == 'pho4')[0][0]
-                        u2 = str(d2[ind])
+                        ind = np.where(variables == 'pho4')[0][0]
+                        u2 = str(d1[ind])
                         if u2 in ban:
                             u2 = np.nan
                         elif u2[0] in ban2:
-                            u2 = u1[1:]
+                            u2 = u2[1:]
                             if u2[-1] in ban2:
                                 u2 = u2[:-1]
-                        data2.append(float(u2))
-                    except:
-                        data2.append(np.nan)
-                        pass    
+                        datadict2.setdefault('data{0}'.format(i), []).append(float(u2))
+                    except IndexError:
+                        datadict2.setdefault('data{0}'.format(i), []).append(np.nan)
+                        pass
                     
             if test.lower() in ('fe', 'iron'):
                 name = 'Fe'
-                for t in range(len(AClist)):
+                for i in range(NCT):
+                    if len(datadict) == 0:
+                        datadict['data{0}'.format(i)] = []
                     try:
-                        d1 = pulldata(AClist[t])[1][i]
-                        ind = np.where((np.array(pulldata(AClist[t])[0]) == 'fe') | (np.array(pulldata(AClist[t])[0]) == 'iron'))[0][0]
+                        d1 = file_data[1][i]
+                        ind = np.where((variables == 'fe') | (variables == 'iron'))[0][0]
                         u1 = str(d1[ind])
                         if u1 in ban:
                             u1 = np.nan
@@ -663,36 +674,19 @@ def plotter(system, test):
                             u1 = u1[1:]
                             if u1[-1] in ban2:
                                 u1 = u1[:-1]
-                        data.append(float(u1))
-                    except:
-                        data.append(np.nan)
-                        pass
-                    
-            if test.lower() == 'cond':
-                name = 'Conductivity'
-                for t in range(len(AClist)):
-                    try:
-                        d1 = pulldata(AClist[t])[1][i]
-                        ind = np.where((np.array(pulldata(AClist[t])[0]) == 'cond') | (np.array(pulldata(AClist[t])[0]) == 'cond.') | (np.array(pulldata(AClist[t])[0]) == 'conductivity'))[0][0]
-                        u1 = str(d1[ind])
-                        if u1 in ban:
-                            u1 = np.nan
-                        elif u1[0] in ban2:
-                            u1 = u1[1:]
-                            if u1[-1] in ban2:
-                                u1 = u1[:-1]
-                        data.append(float(u1))
-                    except:
-                        data.append(np.nan)
-                        pass
-                    
+                        datadict.setdefault('data{0}'.format(i), []).append(float(u1))
+                    except IndexError:
+                        datadict.setdefault('data{0}'.format(i), []).append(np.nan)
+                        
             if test.lower() in ('hardness', 'ca', 'ca hardness', 'mg hardness', 'total hardness'):
                 name = 'Ca Hardness'
                 name2 = 'Mg Hardness'
-                for t in range(len(AClist)):
+                for i in range(NCT):
+                    if len(datadict) == 0:
+                        datadict['data{0}'.format(i)] = []
                     try:
-                        d1 = pulldata(AClist[t])[1][i]
-                        ind = np.where((np.array(pulldata(AClist[t])[0]) == 'ca hardness') | (np.array(pulldata(AClist[t])[0]) == 'ca'))[0][0]
+                        d1 = file_data[1][i]
+                        ind = np.where((variables == 'ca hardness') | (variables == 'ca'))[0][0]
                         u1 = str(d1[ind])
                         if u1 in ban:
                             u1 = np.nan
@@ -700,33 +694,31 @@ def plotter(system, test):
                             u1 = u1[1:]
                             if u1[-1] in ban2:
                                 u1 = u1[:-1]
-                        data.append(float(u1))
+                        datadict.setdefault('data{0}'.format(i), []).append(float(u1))
                     except:
-                        data.append(np.nan)
+                        datadict.setdefault('data{0}'.format(i), []).append(np.nan)
                         pass
-                for t in range(len(AClist)):
                     try:
-                        d2 = pulldata(AClist[t])[1][i]
-                        ind = np.where((np.array(pulldata(AClist[t])[0]) == 'mg Hardness') | (np.array(pulldata(AClist[t])[0]) == 'mg'))[0][0]
-                        u2 = str(d2[ind])
+                        ind = np.where((variables == 'mg Hardness') | (variables == 'mg'))[0][0]
+                        u2 = str(d1[ind])
                         if u2 in ban:
                             u2 = np.nan
                         elif u2[0] in ban2:
                             u2 = u1[1:]
                             if u2[-1] in ban2:
                                 u2 = u2[:-1]
-                        data2.append(float(u2))
+                        datadict2.setdefault('data{0}'.format(i), []).append(float(u2))
                     except:
-                        data2.append(np.nan)
+                        datadict2.setdefault('data{0}'.format(i), []).append(np.nan)
                         pass
                     
             if test.lower() in ('atp'):
                 name = 'FATP'
                 name2 = 'TATP'
-                for t in range(len(AClist)):
+                for i in range(NCT):
                     try:
-                        d1 = pulldata(AClist[t])[1][i]
-                        ind = np.where((np.array(pulldata(AClist[t])[0]) == 'fatp') | (np.array(pulldata(AClist[t])[0]) == 'f') | (np.array(pulldata(AClist[t])[0]) == 'free atp') | (np.array(pulldata(AClist[t])[0]) == 'f.atp'))[0][0]
+                        d1 = file_data[1][i]
+                        ind = np.where((variables == 'fatp') | (variables == 'f') | (variables == 'free atp') | (variables == 'f.atp'))[0][0]
                         u1 = str(d1[ind])
                         if u1 in ban:
                             u1 = np.nan
@@ -734,61 +726,60 @@ def plotter(system, test):
                             u1 = u1[1:]
                             if u1[-1] in ban2:
                                 u1 = u1[:-1]
-                        data.append(float(u1))
+                        datadict.setdefault('data{0}'.format(i), []).append(float(u1))
                     except:
-                        data.append(np.nan)
+                        datadict.setdefault('data{0}'.format(i), []).append(np.nan)
                         pass
                     try:
-                        d2 = pulldata(AClist[t])[1][i]
-                        ind = np.where((np.array(pulldata(AClist[t])[0]) == 'tatp') | (np.array(pulldata(AClist[t])[0]) == 't') | (np.array(pulldata(AClist[t])[0]) == 'total atp') | (np.array(pulldata(AClist[t])[0]) == 't.atp'))[0][0]
-                        u2 = str(d2[ind])
+                        ind = np.where((variables == 'tatp') | (variables == 't') | (variables == 'total atp') | (variables == 't.atp'))[0][0]
+                        u2 = str(d1[ind])
                         if u2 in ban:
                             u2 = np.nan
                         elif u2[0] in ban2:
                             u2 = u1[1:]
                             if u2[-1] in ban2:
                                 u2 = u2[:-1]
-                        data2.append(float(u2))
+                        datadict2.setdefault('data{0}'.format(i), []).append(float(u2))
                     except:
-                        data2.append(np.nan)
-            
-            datadict["data{0}".format(i)] = np.array(data)
-            if len(data2) != 0:
-                datadict2["data{0}".format(i)] = np.array(data2)
-            
-                
+                        datadict2.setdefault('data{0}'.format(i), []).append(np.nan)
+                        pass
+                    
+            if test.lower() == 'cond':
+                name = 'Conductivity'
+                for i in range(NCT):
+                    if len(datadict) == 0:
+                        datadict['data{0}'.format(i)] = []
+                    try:
+                        d1 = file_data[1][i]
+                        ind = np.where((variables == 'cond') | (variables == 'cond.') | (variables == 'conductivity'))[0][0]
+                        u1 = str(d1[ind])
+                        if u1 in ban:
+                            u1 = np.nan
+                        elif u1[0] in ban2:
+                            u1 = u1[1:]
+                            if u1[-1] in ban2:
+                                u1 = u1[:-1]
+                        datadict.setdefault('data{0}'.format(i), []).append(float(u1))
+                    except:
+                        datadict.setdefault('data{0}'.format(i), []).append(np.nan)
+                        pass                              
 
     if system == 'CL':
         labels_local = cl_labels
         NCT = len(labels_local)
-
-        for i in range(NCT):
-            data = []
-            data2 = []
-            if test.lower() in ('nitrite'):
-                name = 'Closed Loop Nitrite'
-                for t in range(len(AClist)):
-                    try:
-                        d1 = pulldata(AClist[t])[3][i]
-                        ind = np.where((np.array(pulldata(AClist[t])[2]) == 'nitrite') | (np.array(pulldata(AClist[t])[2]) == 'nit') | (np.array(pulldata(AClist[t])[2]) == 'nit.'))[0][0]
-                        u1 = str(d1[ind])
-                        if u1 in ban:
-                            u1 = np.nan
-                        elif u1[0] in ban2:
-                            u1 = u1[1:]
-                            if u1[-1] in ban2:
-                                u1 = u1[:-1]
-                        data.append(float(u1))
-                    except:
-                        data.append(np.nan)
-                        pass
-                    
-            if test.lower() in ('cltds'):
+        
+        for t in range(len(AClist)):
+            file_data = pulldata(AClist[t])
+            variables = np.array(file_data[2])
+            
+            if test.lower() == 'cltds':
                 name = 'Closed Loop TDS'
-                for t in range(len(AClist)):
+                for i in range(NCT):
+                    if len(datadict) == 0:
+                        datadict['data{0}'.format(i)] = []
                     try:
-                        d1 = pulldata(AClist[t])[3][i]
-                        ind = np.where(np.array(pulldata(AClist[t])[2]) == 'tds')[0][0]
+                        d1 = file_data[3][i]
+                        ind = np.where(variables == 'tds')[0][0]
                         u1 = str(d1[ind])
                         if u1 in ban:
                             u1 = np.nan
@@ -796,17 +787,39 @@ def plotter(system, test):
                             u1 = u1[1:]
                             if u1[-1] in ban2:
                                 u1 = u1[:-1]
-                        data.append(float(u1))
-                    except:
-                        data.append(np.nan)
+                        datadict.setdefault('data{0}'.format(i), []).append(float(u1))
+                    except IndexError:
+                        datadict.setdefault('data{0}'.format(i), []).append(np.nan)
                         pass
                     
-            if test.lower() in ('clph'):
+            if test.lower() == 'nitrite':
+                name = 'Closed Loop Nitrite'
+                for i in range(NCT):
+                    if len(datadict) == 0:
+                        datadict['data{0}'.format(i)] = []
+                    try:
+                        d1 = file_data[3][i]
+                        ind = np.where((variables == 'nitrite') | (variables == 'nit') | (variables == 'nit.'))[0][0]
+                        u1 = str(d1[ind])
+                        if u1 in ban:
+                            u1 = np.nan
+                        elif u1[0] in ban2:
+                            u1 = u1[1:]
+                            if u1[-1] in ban2:
+                                u1 = u1[:-1]
+                        datadict.setdefault('data{0}'.format(i), []).append(float(u1))
+                    except IndexError:
+                        datadict.setdefault('data{0}'.format(i), []).append(np.nan)
+                        pass
+                    
+            if test.lower() == 'clph':
                 name = 'Closed Loop pH'
-                for t in range(len(AClist)):
+                for i in range(NCT):
+                    if len(datadict) == 0:
+                        datadict['data{0}'.format(i)] = []
                     try:
-                        d1 = pulldata(AClist[t])[3][i]
-                        ind = np.where(np.array(pulldata(AClist[t])[2]) == 'ph')[0][0]
+                        d1 = file_data[3][i]
+                        ind = np.where(variables == 'ph')[0][0]
                         u1 = str(d1[ind])
                         if u1 in ban:
                             u1 = np.nan
@@ -814,17 +827,19 @@ def plotter(system, test):
                             u1 = u1[1:]
                             if u1[-1] in ban2:
                                 u1 = u1[:-1]
-                        data.append(float(u1))
-                    except:
-                        data.append(np.nan)
+                        datadict.setdefault('data{0}'.format(i), []).append(float(u1))
+                    except IndexError:
+                        datadict.setdefault('data{0}'.format(i), []).append(np.nan)
                         pass
                     
-            if test.lower() in ('clcu'):
+            if test.lower() == 'clcu':
                 name = 'Closed Loop Cu'
-                for t in range(len(AClist)):
+                for i in range(NCT):
+                    if len(datadict) == 0:
+                        datadict['data{0}'.format(i)] = []
                     try:
-                        d1 = pulldata(AClist[t])[3][i]
-                        ind = np.where(np.array(pulldata(AClist[t])[2]) == 'cu')[0][0]
+                        d1 = file_data[3][i]
+                        ind = np.where(variables == 'cu')[0][0]
                         u1 = str(d1[ind])
                         if u1 in ban:
                             u1 = np.nan
@@ -832,33 +847,31 @@ def plotter(system, test):
                             u1 = u1[1:]
                             if u1[-1] in ban2:
                                 u1 = u1[:-1]
-                        data.append(float(u1))
-                    except:
-                        data.append(np.nan)
-                        pass
-                    
-            if test.lower() in ('clfe'):
-                name = 'Closed Loop Fe'
-                for t in range(len(AClist)):
-                    try:
-                        d1 = pulldata(AClist[t])[3][i]
-                        ind = np.where(np.array(pulldata(AClist[t])[2]) == 'fe')[0][0]
-                        u1 = str(d1[ind])
-                        if u1 in ban:
-                            u1 = np.nan
-                        elif u1[0] in ban2:
-                            u1 = u1[1:]
-                            if u1[-1] in ban2:
-                                u1 = u1[:-1]
-                        data.append(float(u1))
-                    except:
-                        data.append(np.nan)
+                        datadict.setdefault('data{0}'.format(i), []).append(float(u1))
+                    except IndexError:
+                        datadict.setdefault('data{0}'.format(i), []).append(np.nan)
                         pass
             
-            datadict["data{0}".format(i)] = np.array(data)
-            if len(data2) != 0:
-                datadict2["data{0}".format(i)] = np.array(data2)
-    
+            if test.lower() == 'clfe':
+                name = 'Closed Loop Fe'
+                for i in range(NCT):
+                    if len(datadict) == 0:
+                        datadict['data{0}'.format(i)] = []
+                    try:
+                        d1 = file_data[3][i]
+                        ind = np.where(variables == 'fe')[0][0]
+                        u1 = str(d1[ind])
+                        if u1 in ban:
+                            u1 = np.nan
+                        elif u1[0] in ban2:
+                            u1 = u1[1:]
+                            if u1[-1] in ban2:
+                                u1 = u1[:-1]
+                        datadict.setdefault('data{0}'.format(i), []).append(float(u1))
+                    except IndexError:
+                        datadict.setdefault('data{0}'.format(i), []).append(np.nan)
+                        pass
+
     data_sets = []
     data_sets2 = []
     for c in range(NCT):
@@ -1073,7 +1086,7 @@ class app():
         #    button6.pack(side=LEFT)
         button7 = ttk.Button(cmd_frame,
                                  text="Cu/Copper",
-                                 command=lambda: plotter('CT','cu'))  
+                                 command=lambda: plotter('CT','Cu'))  
         #    button7.pack(side=LEFT)
         button8 = ttk.Button(cmd_frame,
                                  text="Hardness",
@@ -1081,7 +1094,7 @@ class app():
         #    button8.pack(side=LEFT)
         button9 = ttk.Button(cmd_frame,
                                  text="Zn/Zinc",
-                                 command=lambda: plotter('CT','zn'))   
+                                 command=lambda: plotter('CT','Zn'))   
         button14 = ttk.Button(cmd_frame,
                                  text="FATP & TATP",
                                  command=lambda: plotter('CT','atp'))  
@@ -1299,5 +1312,3 @@ program = app()
 
 # Start the GUI event loop
 program.window.mainloop()
-
-
