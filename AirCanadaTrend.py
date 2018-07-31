@@ -251,14 +251,14 @@ def pulldata(file):
             # if there are mostly 'ct' test labels in the table header, assign data to CT lists
             if len(temp_ct_var) > len(temp_cl_var):
                 if len(CTvariables) == 0:
-                    CTvariables = data['data{0}'.format(i)][0]
+                    CTvariables = [item.lower() for item in data['data{0}'.format(i)][0]]
                 else:
                     # Check if another CT table has test names not present in first, and add to first
                     # table's variables + place '' on each data contained in first table, to represent that
                     # we had no data for that test
-                    missing_tests = np.setdiff1d(data['data{0}'.format(i)][0], CTvariables)[0]
-                    variables2 = data['data{0}'.format(i)][0]
+                    variables2 = [item.lower() for item in data['data{0}'.format(i)][0]]
                     data2 = temp_list
+                    missing_tests = np.setdiff1d(variables2, CTvariables)[0]
                     if len(missing_tests) != 0:
                         for t in range(len(missing_tests)):
                             CTvariables.append(missing_tests[t])
@@ -304,9 +304,10 @@ def pulldata(file):
                 for item in temp_list:
                     CLdata.append(item)
                 if len(CLvariables) == 0:
-                    CLvariables = data['data{0}'.format(i)][0]
+                    CLvariables = [item.lower() for item in data['data{0}'.format(i)][0]]
                 else:
-                    missing_tests = np.setdiff1d(data['data{0}'.format(i)][0], CLvariables)[0]
+                    variables2 = [item.lower() for item in data['data{0}'.format(i)][0]]
+                    missing_tests = np.setdiff1d(variables2, CLvariables)[0]
                     if len(missing_tests) != 0:
                         for t in range(len(missing_tests)):
                             CLvariables.append(missing_tests[t])
@@ -516,8 +517,8 @@ def change_directory():
             config.write(configfile)
     change_directory_variable(dirname2)
 
-# To create menus to change around labels kept in settings.ini, as well as 
-# alternate names
+# Function for app; To create menus to change around labels kept in settings.ini, 
+# as well as  alternate names for each label (choice indicates if it's for cl or ct samples)
 choice = None
 def change_samples(arg):
     global choice
@@ -525,26 +526,37 @@ def change_samples(arg):
     listbox_app = listbox()
     listbox_app.window.mainloop()
 
-
+# Function for app; To ensure application ends after use
 def on_exit(window):
     window.destroy()
     window.quit()
     
 #----------------------------------------------------------------------
+#                   SECTION: PLOTTING FUNCTION
+    
+# This function takes in the arguments system ('CT' or 'CL') and test ('TDS', 'ORP', etc.)
+# and iterates through each file contained in AClist to pull the relevant data using the
+# function pulldata. This data is gathered and then plotted using plotly (scatter).
 
 def plotter(system, test):
     global labels, cl_labels
+    
+    # Two dictionaries to hold data, the second being for tests with related parameters
+    # such as phosphonate and hardness
     datadict = {}
     datadict2 = {}
     
+    # Banned strings that at times appear
     ban = ('', 'system drained', '-', 'drained', 'drained for winter')
     ban2 = ('>', '<')
-#    ban3 = ('', ' ', 'sample', 'target')
-#    ban4 = ('sample', 'target')
+    
+    # 'Normal' tests which don't seem to change in labelling (thankfully)
     keysnom = ('TDS', 'ORP', 'Cu', 'Zn', 'pH')
     
     if system == 'CT':
         labels_local = labels
+        
+        # NCT = number of CT samples present
         NCT = len(labels_local)
         
         for i in range(NCT):
@@ -556,7 +568,7 @@ def plotter(system, test):
                 for t in range(len(AClist)):  
                     try:
                         d1 = pulldata(AClist[t])[1][i]
-                        ind = np.where(np.array(pulldata(AClist[t])[0]) == test)[0][0]
+                        ind = np.where(np.array(pulldata(AClist[t])[0]) == test.lower())[0][0]
                         u1 = str(d1[ind])
                         if u1 in ban:
                             u1 = np.nan
@@ -574,7 +586,7 @@ def plotter(system, test):
                 for t in range(len(AClist)):
                     try:
                         d1 = pulldata(AClist[t])[1][i]
-                        ind = np.where((np.array(pulldata(AClist[t])[0]) == 'Free Cl') | (np.array(pulldata(AClist[t])[0]) == 'Cl'))[0][0]
+                        ind = np.where((np.array(pulldata(AClist[t])[0]) == 'free Cl') | (np.array(pulldata(AClist[t])[0]) == 'cl') | (np.array(pulldata(AClist[t])[0]) == 'fcl'))[0][0]
                         u1 = str(d1[ind])
                         if u1 in ban:
                             u1 = np.nan
@@ -592,7 +604,7 @@ def plotter(system, test):
                 for t in range(len(AClist)):
                     try:
                         d1 = pulldata(AClist[t])[1][i]
-                        ind = np.where((np.array(pulldata(AClist[t])[0]) == 'M. Alk') | (np.array(pulldata(AClist[t])[0]) == 'Alkalinity') | (np.array(pulldata(AClist[t])[0]) == 'Alk.') | (np.array(pulldata(AClist[t])[0]) == 'M.Alk'))[0][0]
+                        ind = np.where((np.array(pulldata(AClist[t])[0]) == 'm. alk') | (np.array(pulldata(AClist[t])[0]) == 'alkalinity') | (np.array(pulldata(AClist[t])[0]) == 'alk.') | (np.array(pulldata(AClist[t])[0]) == 'a.alk'))[0][0]
                         u1 = str(d1[ind])
                         if u1 in ban:
                             u1 = np.nan
@@ -611,7 +623,7 @@ def plotter(system, test):
                 for t in range(len(AClist)):
                     try:
                         d1 = pulldata(AClist[t])[1][i]
-                        ind = np.where(np.array(pulldata(AClist[t])[0]) == 'PO4')[0][0]
+                        ind = np.where(np.array(pulldata(AClist[t])[0]) == 'po4')[0][0]
                         u1 = str(d1[ind])
                         if u1 in ban:
                             u1 = np.nan
@@ -623,10 +635,9 @@ def plotter(system, test):
                     except:
                         data.append(np.nan)
                         pass
-                for t in range(len(AClist)):
                     try:
                         d2 = pulldata(AClist[t])[1][i]
-                        ind = np.where(np.array(pulldata(AClist[t])[0]) == 'PhO4')[0][0]
+                        ind = np.where(np.array(pulldata(AClist[t])[0]) == 'pho4')[0][0]
                         u2 = str(d2[ind])
                         if u2 in ban:
                             u2 = np.nan
@@ -644,7 +655,7 @@ def plotter(system, test):
                 for t in range(len(AClist)):
                     try:
                         d1 = pulldata(AClist[t])[1][i]
-                        ind = np.where((np.array(pulldata(AClist[t])[0]) == 'Fe') | (np.array(pulldata(AClist[t])[0]) == 'Iron'))[0][0]
+                        ind = np.where((np.array(pulldata(AClist[t])[0]) == 'fe') | (np.array(pulldata(AClist[t])[0]) == 'iron'))[0][0]
                         u1 = str(d1[ind])
                         if u1 in ban:
                             u1 = np.nan
@@ -662,7 +673,7 @@ def plotter(system, test):
                 for t in range(len(AClist)):
                     try:
                         d1 = pulldata(AClist[t])[1][i]
-                        ind = np.where((np.array(pulldata(AClist[t])[0]) == 'Cond') | (np.array(pulldata(AClist[t])[0]) == 'Cond.'))[0][0]
+                        ind = np.where((np.array(pulldata(AClist[t])[0]) == 'cond') | (np.array(pulldata(AClist[t])[0]) == 'cond.') | (np.array(pulldata(AClist[t])[0]) == 'conductivity'))[0][0]
                         u1 = str(d1[ind])
                         if u1 in ban:
                             u1 = np.nan
@@ -681,7 +692,7 @@ def plotter(system, test):
                 for t in range(len(AClist)):
                     try:
                         d1 = pulldata(AClist[t])[1][i]
-                        ind = np.where((np.array(pulldata(AClist[t])[0]) == 'Ca Hardness') | (np.array(pulldata(AClist[t])[0]) == 'Ca'))[0][0]
+                        ind = np.where((np.array(pulldata(AClist[t])[0]) == 'ca hardness') | (np.array(pulldata(AClist[t])[0]) == 'ca'))[0][0]
                         u1 = str(d1[ind])
                         if u1 in ban:
                             u1 = np.nan
@@ -696,7 +707,7 @@ def plotter(system, test):
                 for t in range(len(AClist)):
                     try:
                         d2 = pulldata(AClist[t])[1][i]
-                        ind = np.where((np.array(pulldata(AClist[t])[0]) == 'Mg Hardness') | (np.array(pulldata(AClist[t])[0]) == 'Mg'))[0][0]
+                        ind = np.where((np.array(pulldata(AClist[t])[0]) == 'mg Hardness') | (np.array(pulldata(AClist[t])[0]) == 'mg'))[0][0]
                         u2 = str(d2[ind])
                         if u2 in ban:
                             u2 = np.nan
@@ -715,7 +726,7 @@ def plotter(system, test):
                 for t in range(len(AClist)):
                     try:
                         d1 = pulldata(AClist[t])[1][i]
-                        ind = np.where((np.array(pulldata(AClist[t])[0]) == 'FATP') | (np.array(pulldata(AClist[t])[0]) == 'F') | (np.array(pulldata(AClist[t])[0]) == 'Free ATP'))[0][0]
+                        ind = np.where((np.array(pulldata(AClist[t])[0]) == 'fatp') | (np.array(pulldata(AClist[t])[0]) == 'f') | (np.array(pulldata(AClist[t])[0]) == 'free atp') | (np.array(pulldata(AClist[t])[0]) == 'f.atp'))[0][0]
                         u1 = str(d1[ind])
                         if u1 in ban:
                             u1 = np.nan
@@ -727,10 +738,9 @@ def plotter(system, test):
                     except:
                         data.append(np.nan)
                         pass
-                for t in range(len(AClist)):
                     try:
                         d2 = pulldata(AClist[t])[1][i]
-                        ind = np.where((np.array(pulldata(AClist[t])[0]) == 'TATP') | (np.array(pulldata(AClist[t])[0]) == 'T') | (np.array(pulldata(AClist[t])) == 'Total ATP'))[0][0]
+                        ind = np.where((np.array(pulldata(AClist[t])[0]) == 'tatp') | (np.array(pulldata(AClist[t])[0]) == 't') | (np.array(pulldata(AClist[t])[0]) == 'total atp') | (np.array(pulldata(AClist[t])[0]) == 't.atp'))[0][0]
                         u2 = str(d2[ind])
                         if u2 in ban:
                             u2 = np.nan
@@ -741,9 +751,7 @@ def plotter(system, test):
                         data2.append(float(u2))
                     except:
                         data2.append(np.nan)
-                        pass
             
-
             datadict["data{0}".format(i)] = np.array(data)
             if len(data2) != 0:
                 datadict2["data{0}".format(i)] = np.array(data2)
@@ -762,7 +770,7 @@ def plotter(system, test):
                 for t in range(len(AClist)):
                     try:
                         d1 = pulldata(AClist[t])[3][i]
-                        ind = np.where((np.array(pulldata(AClist[t])[2]) == 'Nitrite') | (np.array(pulldata(AClist[t])[2]) == 'Nit'))[0][0]
+                        ind = np.where((np.array(pulldata(AClist[t])[2]) == 'nitrite') | (np.array(pulldata(AClist[t])[2]) == 'nit') | (np.array(pulldata(AClist[t])[2]) == 'nit.'))[0][0]
                         u1 = str(d1[ind])
                         if u1 in ban:
                             u1 = np.nan
@@ -780,7 +788,7 @@ def plotter(system, test):
                 for t in range(len(AClist)):
                     try:
                         d1 = pulldata(AClist[t])[3][i]
-                        ind = np.where(np.array(pulldata(AClist[t])[2]) == 'TDS')[0][0]
+                        ind = np.where(np.array(pulldata(AClist[t])[2]) == 'tds')[0][0]
                         u1 = str(d1[ind])
                         if u1 in ban:
                             u1 = np.nan
@@ -798,7 +806,7 @@ def plotter(system, test):
                 for t in range(len(AClist)):
                     try:
                         d1 = pulldata(AClist[t])[3][i]
-                        ind = np.where(np.array(pulldata(AClist[t])[2]) == 'pH')[0][0]
+                        ind = np.where(np.array(pulldata(AClist[t])[2]) == 'ph')[0][0]
                         u1 = str(d1[ind])
                         if u1 in ban:
                             u1 = np.nan
@@ -816,7 +824,7 @@ def plotter(system, test):
                 for t in range(len(AClist)):
                     try:
                         d1 = pulldata(AClist[t])[3][i]
-                        ind = np.where(np.array(pulldata(AClist[t])[2]) == 'Cu')[0][0]
+                        ind = np.where(np.array(pulldata(AClist[t])[2]) == 'cu')[0][0]
                         u1 = str(d1[ind])
                         if u1 in ban:
                             u1 = np.nan
@@ -834,7 +842,7 @@ def plotter(system, test):
                 for t in range(len(AClist)):
                     try:
                         d1 = pulldata(AClist[t])[3][i]
-                        ind = np.where(np.array(pulldata(AClist[t])[2]) == 'Fe')[0][0]
+                        ind = np.where(np.array(pulldata(AClist[t])[2]) == 'fe')[0][0]
                         u1 = str(d1[ind])
                         if u1 in ban:
                             u1 = np.nan
@@ -918,9 +926,10 @@ def plotter(system, test):
                     "type": "scatter",
                     "hoverinfo": "name+x+text",
                     'legendgroup': 'group{0}'.format(k),
-                    "line": {"width": 0.5,
-                             'dash':'dot'}, 
-                    "marker": {"size": 8},
+                    "line": {"width": 0.8,
+                             'dash': 'dot'}, 
+                    "marker": {"size": 8,
+                               'symbol': 'square'},
                     "mode": "lines+markers",
                     "showlegend": False
                 }
@@ -1064,7 +1073,7 @@ class app():
         #    button6.pack(side=LEFT)
         button7 = ttk.Button(cmd_frame,
                                  text="Cu/Copper",
-                                 command=lambda: plotter('CT','Cu'))  
+                                 command=lambda: plotter('CT','cu'))  
         #    button7.pack(side=LEFT)
         button8 = ttk.Button(cmd_frame,
                                  text="Hardness",
@@ -1072,7 +1081,7 @@ class app():
         #    button8.pack(side=LEFT)
         button9 = ttk.Button(cmd_frame,
                                  text="Zn/Zinc",
-                                 command=lambda: plotter('CT','Zn'))   
+                                 command=lambda: plotter('CT','zn'))   
         button14 = ttk.Button(cmd_frame,
                                  text="FATP & TATP",
                                  command=lambda: plotter('CT','atp'))  
